@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0e1620">
+<link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -132,9 +133,9 @@ fieldset.step[hidden]{display:none}
 #plate{position:fixed;inset:0;z-index:95;background:var(--bg);display:none;flex-direction:column;
   padding-top:var(--safe-t);padding-bottom:var(--safe-b)}
 #plate.on{display:flex}
-/* wynik HASS: PASS zielony / FAIL czerwony */
-#hassInput.pass{color:#0a7d28;border-color:#0a7d28;font-weight:700}
-#hassInput.fail{color:#c0122a;border-color:#c0122a;font-weight:700}
+/* wynik HASS: PASS/N-A zielony / FAIL czerwony */
+#hassResult.pass{color:#0a7d28;border-color:#0a7d28;font-weight:700}
+#hassResult.fail{color:#c0122a;border-color:#c0122a;font-weight:700}
 /* modal udostępniania po zapisie */
 #shareModal{position:fixed;inset:0;z-index:96;background:var(--bg);display:none;flex-direction:column;
   padding-top:var(--safe-t);padding-bottom:var(--safe-b)}
@@ -253,6 +254,15 @@ fieldset.step[hidden]{display:none}
     <fieldset class="step" data-step="1">
       <h2 class="steptitle">Dokumenty klienta</h2>
       <p class="stepsub">Zanim dotkniesz urządzenia: co zgłoszono, kiedy kupiono, kiedy przyjęto zgłoszenie.</p>
+
+      <div class="grid2">
+        <label class="f"><span>Serwis</span>
+          <input type="text" data-field="service" placeholder="wpisz nazwę serwisu">
+        </label>
+        <label class="f"><span>Technik</span>
+          <input type="text" data-field="technician" placeholder="wpisz imię i nazwisko technika">
+        </label>
+      </div>
 
       <div class="grid2">
         <label class="f"><span>Numer pozycji (No)</span><input type="number" data-field="no" inputmode="numeric"></label>
@@ -413,19 +423,11 @@ fieldset.step[hidden]{display:none}
       <div class="grid2">
         <label class="f"><span>Wynik HASS</span>
           <select data-field="hassResult" id="hassResult">
-            <option value="">—</option><option>PASS</option><option>NG</option><option>N/A</option>
+            <option value="">—</option><option>PASS</option><option>FAIL</option><option>N/A</option>
           </select>
         </label>
         <label class="f"><span>Licznik cykli</span><input type="text" data-field="cyclesCounter" placeholder="np. 279"></label>
       </div>
-
-      <label class="f"><span>Opis HASS (trafia do kolumny HASS)</span>
-        <select data-field="hass" id="hassInput">
-          <option value="">—</option>
-          <option value="PASS">PASS</option>
-          <option value="FAIL">FAIL</option>
-        </select>
-      </label>
 
       <label class="f"><span>Weryfikacja funkcjonalna</span>
         <textarea data-field="functionalNotes" placeholder="Zachowanie w cyklu, hałas, wyciek, próba odtworzenia objawu"></textarea>
@@ -628,9 +630,8 @@ fieldset.step[hidden]{display:none}
     <button type="button" class="btn primary" id="shareXlsx">Udostępnij Excel (ze zdjęciami)</button>
     <button type="button" class="btn" id="shareJsonBtn">Udostępnij plik JSON</button>
     <a class="btn btn-a" id="shareMail" href="#">Napisz e-mail — m.mataj@samsung.com</a>
-    <a class="btn btn-a" id="shareWa" href="#" target="_blank" rel="noopener">WhatsApp — +48 797 025 481</a>
-    <a class="btn btn-a" id="shareSms" href="#">SMS / MMS — +48 797 025 481</a>
-    <p class="share-note">„Udostępnij" otwiera systemowe okno udostępniania — wybierz Gmail, WhatsApp, MMS lub inną aplikację, a plik zostanie dołączony automatycznie. Na komputerze plik zostanie pobrany.</p>
+    <button type="button" class="btn btn-a" id="shareWa">WhatsApp — wyślij raport Excel</button>
+    <p class="share-note">„Udostępnij" otwiera systemowe okno udostępniania — wybierz Gmail, WhatsApp lub inną aplikację, a plik zostanie dołączony automatycznie. Na komputerze plik zostanie pobrany.</p>
   </div>
 </div>
 
@@ -647,7 +648,7 @@ const FIELDS = ["no","sales","type","visitDate","plant","productionMonth","produ
   "customerSymptom","realDefect","inspType","category","activityType","activity","mainPictures",
   "hass","cyclesCounter","errorCodeHistory","unitLocation","collectedParts","remark"];
 
-const EXTRA = ["pjt","visualNotes","functionalNotes","hassResult","returnType"];
+const EXTRA = ["pjt","visualNotes","functionalNotes","hassResult","returnType","service","technician"];
 
 const XL_HEADERS = ["Nr","Sales","Rodzaj zgłoszenia","Data wizyty","Fabryka","Miesiąc produkcji","Rok produkcji",
   "Data zakupu","Data zgłoszenia","PJT","Typ wyświetlacza","Typ dozownika","Kod modelu","Numer seryjny",
@@ -662,7 +663,8 @@ const LABELS = {
   realDefect:"Rzeczywista usterka", inspType:"Rodzaj usterki", category:"Kategoria",
   activityType:"Rodzaj czynności", activity:"Czynności", mainPictures:"Zdjęcia",
   hass:"HASS", cyclesCounter:"Licznik cykli", errorCodeHistory:"Historia kodów błędów",
-  unitLocation:"Lokalizacja", collectedParts:"Zebrane części", remark:"Uwagi", returnType:"Rodzaj zwrotu"
+  unitLocation:"Lokalizacja", collectedParts:"Zebrane części", remark:"Uwagi", returnType:"Rodzaj zwrotu",
+  service:"Serwis", technician:"Technik"
 };
 
 const STEP_NAMES = ["Dokumenty klienta","Identyfikacja urządzenia","Inspekcja wizualna","Weryfikacja funkcjonalna (HASS)","Wnioski i zapis"];
@@ -1033,12 +1035,12 @@ function readForm(){
   draft.series = getSeries();
 }
 function applyHassColor(){
-  const el = $("#hassInput");
+  const el = $("#hassResult");
   if(!el) return;
-  el.classList.toggle("pass", el.value === "PASS");
+  el.classList.toggle("pass", el.value === "PASS" || el.value === "N/A");
   el.classList.toggle("fail", el.value === "FAIL");
 }
-$("#hassInput").addEventListener("change", applyHassColor);
+$("#hassResult").addEventListener("change", applyHassColor);
 function writeForm(){
   $$("[data-field]").forEach(el=>{ el.value = draft[el.dataset.field] || ""; });
   $$(".errcode").forEach((el,i)=> el.value = (draft.errors && draft.errors[i]) || "");
@@ -1540,6 +1542,7 @@ async function nextNumber(){
 }
 function renderSummary(){
   const rows = [
+    ["Serwis / Technik", [draft.service, draft.technician].filter(Boolean).join(" · ")],
     ["Rodzaj zgłoszenia", draft.type],
     (draft.type === "Inspekcja zwrotna" ? ["Rodzaj zwrotu", draft.returnType] : null),
     ["Model / S/N", (draft.modelCode||"—")+"  /  "+(draft.serialNumber||"—")],
@@ -2210,17 +2213,17 @@ $("#importBtn").addEventListener("click", ()=> $("#importFile").click());
    15b. UDOSTĘPNIANIE ZAPISANEJ INSPEKCJI (Excel / JSON / e-mail / WhatsApp)
    ===================================================================== */
 const SHARE_MAIL = "m.mataj@samsung.com";
-const SHARE_PHONE_WA = "48797025481";
-const SHARE_PHONE_SMS = "+48797025481";
 let shareRecord = null;
 
 function shareName(ext){
-  const base = "SESA_Inspekcja_" + ((shareRecord && (shareRecord.serialNumber || shareRecord.id)) || todayISO());
-  return base.replace(/[\\/:*?"<>|]/g, "_") + "_" + todayISO() + ext;
+  const r = shareRecord || {};
+  const name = "Inspekcja_" + (r.modelCode || "brak-modelu") + "_" + (r.serialNumber || "brak-SN");
+  return name.replace(/[\\/:*?"<>|]/g, "_") + ext;
 }
 function shareSummaryText(r){
   return [
     "Inspekcja SESA QA",
+    "Serwis: " + (r.service || "—") + " · Technik: " + (r.technician || "—"),
     "Rodzaj zgłoszenia: " + (r.type || "—"),
     "Model: " + (r.modelCode || "—"),
     "S/N: " + (r.serialNumber || "—"),
@@ -2245,13 +2248,15 @@ async function shareBlob(blob, fname){
   download(blob, fname);
   toast("Brak systemowego udostępniania — plik pobrano, dołącz go ręcznie do e-maila/WhatsApp");
 }
+async function buildShareXlsx(){
+  toast("Tworzenie raportu Excel ze zdjęciami…");
+  const bytes = await buildXLSX([shareRecord], true);
+  return new Blob([bytes], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+}
 $("#shareXlsx").addEventListener("click", async ()=>{
   if(!shareRecord) return;
-  toast("Tworzenie Excela ze zdjęciami…");
-  try{
-    const bytes = await buildXLSX([shareRecord], true);
-    await shareBlob(new Blob([bytes], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}), shareName(".xlsx"));
-  }catch(e){ alert("Nie udało się utworzyć pliku Excel: "+(e && e.message ? e.message : e)); }
+  try{ await shareBlob(await buildShareXlsx(), shareName(".xlsx")); }
+  catch(e){ alert("Nie udało się utworzyć pliku Excel: "+(e && e.message ? e.message : e)); }
 });
 $("#shareJsonBtn").addEventListener("click", async ()=>{
   if(!shareRecord) return;
@@ -2259,14 +2264,31 @@ $("#shareJsonBtn").addEventListener("click", async ()=>{
     {type:"application/json"});
   await shareBlob(blob, shareName(".json"));
 });
+/* WhatsApp: raport Excel przez systemowe okno udostępniania (wybierz WhatsApp);
+   na komputerze — pobranie pliku + otwarcie WhatsApp Web z treścią raportu */
+$("#shareWa").addEventListener("click", async ()=>{
+  if(!shareRecord) return;
+  let blob = null;
+  try{ blob = await buildShareXlsx(); }
+  catch(e){ alert("Nie udało się utworzyć pliku Excel: "+(e && e.message ? e.message : e)); return; }
+  try{
+    const file = new File([blob], shareName(".xlsx"), {type: blob.type});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title: shareName(".xlsx"), text: shareSummaryText(shareRecord)});
+      toast("Plik udostępniono");
+      return;
+    }
+  }catch(e){ if(e && e.name === "AbortError") return; }
+  download(blob, shareName(".xlsx"));
+  window.open("https://wa.me/?text=" + encodeURIComponent(shareSummaryText(shareRecord)), "_blank");
+  toast("Raport Excel pobrano — załącz go w WhatsApp");
+});
 function openShare(rec){
   shareRecord = rec;
   const txt = shareSummaryText(rec);
   const subj = "Inspekcja S/N " + (rec.serialNumber || rec.id);
   $("#shareInfo").textContent = "S/N " + (rec.serialNumber || "—") + " · " + (rec.modelCode || "—") + " · zapisano " + new Date().toLocaleString("pl-PL");
   $("#shareMail").href = "mailto:" + SHARE_MAIL + "?subject=" + encodeURIComponent(subj) + "&body=" + encodeURIComponent(txt);
-  $("#shareWa").href = "https://wa.me/" + SHARE_PHONE_WA + "?text=" + encodeURIComponent(txt);
-  $("#shareSms").href = "sms:" + SHARE_PHONE_SMS + "?body=" + encodeURIComponent(txt);
   $("#shareModal").classList.add("on");
 }
 function closeShare(){ $("#shareModal").classList.remove("on"); shareRecord = null; }
@@ -2386,187 +2408,11 @@ $("#pjtImportFile").addEventListener("change", e=>{
   };
   rd.readAsText(f);
 });
-</script>
-<script id="thor-native-patch">
-/* THOR_NATIVE_PATCH v1
- * Mostek Capacitor (Android) dla: download(), shareBlob(), window.print().
- * Wklej ten blok w <script> tuż przed </body> pliku "THOR (Web).html"
- * (workflow GitHub Actions robi to automatycznie, jeśli znacznika brak).
- *
- * Działa przez nadpisanie globalnych funkcji z głównego skryptu aplikacji:
- * wszystkie wywołania download(...), shareBlob(...) i window.print()
- * trafiają do wersji poniżej. W zwykłej przeglądarce wywoływane są
- * oryginalne funkcje — zachowanie PWA pozostaje bez zmian.
- */
-(function () {
-  "use strict";
 
-  var Cap = window.Capacitor;
-  var isNative = !!(Cap && typeof Cap.isNativePlatform === "function" && Cap.isNativePlatform());
-
-  var origDownload = typeof window.download === "function" ? window.download : null;
-  var origShareBlob = typeof window.shareBlob === "function" ? window.shareBlob : null;
-  var origPrint = typeof window.print === "function" ? window.print.bind(window) : null;
-
-  if (!isNative) return; /* przeglądarka: nic nie zmieniamy */
-
-  var Plugins = Cap.Plugins || {};
-  var FS = Plugins.Filesystem;
-  var Share = Plugins.Share;
-  var ThorPrint = Plugins.ThorPrint;
-
-  var CACHE_DIR = "thor-share";
-  var DOCS_DIR = "THOR";
-  var CHUNK = 3 * 1024 * 1024; /* wielokrotność 3 B → poprawne łączenie fragmentów Base64 */
-  var busy = false;
-
-  function say(msg) {
-    try { if (typeof window.toast === "function") window.toast(msg); } catch (e) { /* brak toastu */ }
-  }
-
-  function errText(e) {
-    return (e && (e.message || e.errorMessage)) ? (e.message || e.errorMessage) : String(e);
-  }
-
-  function safeName(name) {
-    var n = String(name || "THOR_plik").trim().replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_");
-    return n || "THOR_plik";
-  }
-
-  function blobPartToBase64(part) {
-    return new Promise(function (resolve, reject) {
-      var rd = new FileReader();
-      rd.onload = function () {
-        var s = String(rd.result || "");
-        var i = s.indexOf(",");
-        resolve(i >= 0 ? s.slice(i + 1) : "");
-      };
-      rd.onerror = function () { reject(rd.error || new Error("Błąd odczytu danych pliku")); };
-      rd.readAsDataURL(part);
-    });
-  }
-
-  /* Zapis Blob → Directory.Cache fragmentami (bez jednego gigantycznego stringa Base64). */
-  async function writeBlobToCache(blob, name) {
-    var path = CACHE_DIR + "/" + name;
-    try { await FS.deleteFile({ path: path, directory: "CACHE" }); } catch (e) { /* plik nie istniał */ }
-
-    var uri = null;
-    if (!blob.size) {
-      var r0 = await FS.writeFile({ path: path, data: "", directory: "CACHE", recursive: true });
-      uri = r0 && r0.uri;
-    } else {
-      for (var off = 0; off < blob.size; off += CHUNK) {
-        var b64 = await blobPartToBase64(blob.slice(off, Math.min(off + CHUNK, blob.size)));
-        if (off === 0) {
-          var r = await FS.writeFile({ path: path, data: b64, directory: "CACHE", recursive: true });
-          uri = r && r.uri;
-        } else {
-          await FS.appendFile({ path: path, data: b64, directory: "CACHE" });
-        }
-      }
-    }
-    if (!uri) uri = (await FS.getUri({ path: path, directory: "CACHE" })).uri;
-    return { path: path, uri: uri };
-  }
-
-  /* Kopia trwała w publicznym folderze Dokumenty/THOR (best-effort). */
-  async function copyToDocuments(cachePath, name) {
-    try {
-      try { await FS.mkdir({ path: DOCS_DIR, directory: "DOCUMENTS", recursive: true }); } catch (e) { /* istnieje */ }
-      var target = DOCS_DIR + "/" + name;
-      try { await FS.deleteFile({ path: target, directory: "DOCUMENTS" }); } catch (e) { /* nie istniał */ }
-      await FS.copy({ from: cachePath, directory: "CACHE", to: target, toDirectory: "DOCUMENTS" });
-      return true;
-    } catch (e) {
-      console.warn("THOR: kopia do Dokumentów nieudana:", errText(e));
-      return false;
-    }
-  }
-
-  async function openShareSheet(uri, name) {
-    try {
-      await Share.share({ title: name, dialogTitle: "Wyślij lub zapisz: " + name, files: [uri] });
-      return "shared";
-    } catch (e) {
-      if (/cancel/i.test(errText(e))) return "canceled";
-      throw e;
-    }
-  }
-
-  async function nativeSaveAndShare(blob, name, keepCopy) {
-    if (busy) { say("Poczekaj — poprzedni plik jest jeszcze przygotowywany"); return; }
-    if (!FS || !Share) {
-      alert("Brak wtyczek Filesystem/Share w aplikacji. Zbuduj APK ponownie.");
-      return;
-    }
-    busy = true;
-    var fname = safeName(name);
-    try {
-      say("Przygotowywanie pliku " + fname + "…");
-      var w = await writeBlobToCache(blob, fname);
-      var copied = keepCopy ? await copyToDocuments(w.path, fname) : false;
-      var res = await openShareSheet(w.uri, fname);
-      if (copied) say("Kopia zapisana: Dokumenty/" + DOCS_DIR + "/" + fname);
-      else if (res === "shared") say("Plik udostępniono");
-    } catch (e) {
-      alert("Nie udało się zapisać/udostępnić pliku: " + errText(e));
-    } finally {
-      busy = false;
-    }
-  }
-
-  /* --- podmiana funkcji aplikacji --- */
-
-  window.download = function (blob, name) {
-    nativeSaveAndShare(blob, name, true);
-  };
-
-  window.shareBlob = async function (blob, fname) {
-    await nativeSaveAndShare(blob, fname, false);
-  };
-
-  window.print = function () {
-    if (!ThorPrint) {
-      if (origPrint) origPrint();
-      return;
-    }
-    var sub = document.querySelector("#printarea .sub");
-    var job = "THOR_Inspekcja" + (sub ? "_" + sub.textContent.replace(/\s+/g, " ").trim().slice(0, 60) : "");
-    ThorPrint.print({ jobName: safeName(job) }).catch(function (e) {
-      alert("Drukowanie/PDF niedostępne: " + errText(e));
-    });
-  };
-
-  /* --- dopasowania interfejsu w APK --- */
-
-  function nativeInit() {
-    /* WhatsApp: bez target=_blank WebView przekazuje adres do systemu (otwiera aplikację). */
-    var wa = document.getElementById("shareWa");
-    if (wa) wa.removeAttribute("target");
-
-    /* Niektóre menedżery plików oznaczają .json jako text/plain lub octet-stream. */
-    ["importFile", "pjtImportFile"].forEach(function (id) {
-      var el = document.getElementById(id);
-      if (el) el.setAttribute("accept", "application/json,text/plain,application/octet-stream,.json");
-    });
-
-    /* Prośba o trwałe przechowywanie IndexedDB. */
-    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* brak API */ }
-
-    /* Sprzątanie plików tymczasowych z poprzednich sesji. */
-    if (FS) FS.rmdir({ path: CACHE_DIR, directory: "CACHE", recursive: true }).catch(function () {});
-
-    document.documentElement.classList.add("thor-native");
-  }
-
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", nativeInit);
-  else nativeInit();
-
-  /* Dostęp do oryginałów (diagnostyka). */
-  window.__thorOriginal = { download: origDownload, shareBlob: origShareBlob, print: origPrint };
-})();
-
+/* PWA: rejestracja service workera (tylko przy serwowaniu po HTTP/HTTPS) */
+if("serviceWorker" in navigator && location.protocol.indexOf("http") === 0){
+  navigator.serviceWorker.register("sw.js").catch(()=>{});
+}
 </script>
 </body>
 </html>
