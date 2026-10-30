@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>THOR — MQC W/M: Wizyta serwisowa (Ride Along) i inspekcja WH</title>
+<title>THOR — MQC W/M: Wizyta serwisowa i inspekcja</title>
 <style>
 :root{
   --bg:#f2f4f7; --surface:#ffffff; --surface-2:#e9edf2; --line:#c9d2dc; --line-soft:#dde4ec;
@@ -160,9 +160,9 @@ fieldset.step[hidden]{display:none}
 #scanner.on{display:flex}
 #scanner video{flex:1;width:100%;object-fit:cover;background:#000}
 .scanframe{position:absolute;left:8%;right:8%;top:32%;height:170px;border:3px solid #fff;border-radius:12px;
-  box-shadow:0 0 0 100vmax rgba(0,0,0,.45)}
+  box-shadow:0 0 0 100vmax rgba(0,0,0,.45);pointer-events:none}
 .scanmsg{position:absolute;left:0;right:0;top:calc(14px + var(--safe-t));text-align:center;color:#fff;
-  font-size:14px;z-index:3;text-shadow:0 1px 4px #000;padding:0 20px}
+  font-size:14px;z-index:3;text-shadow:0 1px 4px #000;padding:0 20px;pointer-events:none}
 .scandiag{position:relative;z-index:3;padding:12px 16px;background:#131b24;color:#cfdae6;font-size:13px;
   line-height:1.5;max-height:42vh;overflow:auto;border-top:1px solid #2a3a4b;display:none}
 .scandiag.on{display:block}
@@ -175,6 +175,9 @@ fieldset.step[hidden]{display:none}
 .scanmanual .btn{background:#1b2430;border-color:#2f3d4d;color:#fff;flex:0 0 auto}
 .scanbar{position:relative;z-index:3;display:flex;gap:8px;padding:12px 14px calc(12px + var(--safe-b));background:#0b0f14}
 .scanbar .btn{flex:1;background:#1b2430;border-color:#2f3d4d;color:#fff}
+.scanbar .btn.act{background:#f0b429;border-color:#f0b429;color:#111;font-weight:700}
+.scanbar .btn:disabled{opacity:.45}
+#scanVideo{cursor:pointer}
 #scanner.nocam video,#scanner.nocam .scanframe{display:none}
 #scanner.nocam{justify-content:flex-end;background:#0b0f14}
 
@@ -215,7 +218,7 @@ fieldset.step[hidden]{display:none}
 <header class="appbar">
   <div class="mark">QA</div>
   <div class="titles">
-    <h1>Wizyta serwisowa (Ride Along) i inspekcja WH</h1>
+    <h1 id="appTitle">Wizyta serwisowa i inspekcja</h1>
     <p id="subline">THOR · MQC W/M Samsung Electronics Poland Manufacturing</p>
   </div>
   <button class="icon-btn" id="themeBtn" title="Przełącz motyw" aria-label="Przełącz motyw">◐</button>
@@ -319,23 +322,17 @@ fieldset.step[hidden]{display:none}
 
       <div class="btnrow" style="margin-bottom:14px">
         <button type="button" class="btn primary" id="plateBtn" style="flex:1">Zdjęcie tabliczki znamionowej</button>
-        <button type="button" class="btn" data-scan="both">Skaner kodów</button>
+        <button type="button" class="btn" data-scan="both" style="flex:1">Skanuj kod</button>
       </div>
       <input type="file" id="plateFile" accept="image/*" capture="environment" hidden>
 
       <label class="f"><span>Numer seryjny (S/N)</span>
-        <div class="with-btn">
-          <input type="text" data-field="serialNumber" id="snInput" autocapitalize="characters" placeholder="089A5ESY900295M">
-          <button type="button" class="btn" data-scan="serialNumber" aria-label="Skanuj S/N">▣</button>
-        </div>
+        <input type="text" data-field="serialNumber" id="snInput" autocapitalize="characters" placeholder="089A5ESY900295M">
       </label>
       <p class="auto" id="snDecoded"></p>
 
       <label class="f"><span>Kod modelu</span>
-        <div class="with-btn">
-          <input type="text" data-field="modelCode" id="modelInput" autocapitalize="characters" placeholder="WW90CGC04DAEEC">
-          <button type="button" class="btn" data-scan="modelCode" aria-label="Skanuj model">▣</button>
-        </div>
+        <input type="text" data-field="modelCode" id="modelInput" autocapitalize="characters" placeholder="WW90CGC04DAEEC">
       </label>
       <p class="auto" id="modelDecoded"></p>
 
@@ -613,11 +610,10 @@ fieldset.step[hidden]{display:none}
     <button type="button" class="btn" id="scanManualOk">OK</button>
   </div>
   <div class="scanbar">
-    <button type="button" class="btn" id="scanFallback">Zdjęcie kodu</button>
-    <button type="button" class="btn" id="scanTorch" hidden>Latarka</button>
+    <button type="button" class="btn" id="scanFocus">Wyostrz</button>
+    <button type="button" class="btn" id="scanTorch">Latarka</button>
     <button type="button" class="btn" id="scanClose">Zamknij</button>
   </div>
-  <input type="file" id="scanFile" accept="image/*" capture="environment" hidden>
 </div>
 
 <div id="shareModal">
@@ -662,12 +658,26 @@ const LABELS = {
   modelCode:"Kod modelu", serialNumber:"Numer seryjny", customerSymptom:"Objaw zgłoszony przez klienta",
   realDefect:"Rzeczywista usterka", inspType:"Rodzaj usterki", category:"Kategoria",
   activityType:"Rodzaj czynności", activity:"Czynności", mainPictures:"Zdjęcia",
-  hass:"HASS", cyclesCounter:"Licznik cykli", errorCodeHistory:"Historia kodów błędów",
+  hassResult:"Wynik HASS", cyclesCounter:"Licznik cykli", errorCodeHistory:"Historia kodów błędów",
   unitLocation:"Lokalizacja", collectedParts:"Zebrane części", remark:"Uwagi", returnType:"Rodzaj zwrotu",
   service:"Serwis", technician:"Technik"
 };
 
 const STEP_NAMES = ["Dokumenty klienta","Identyfikacja urządzenia","Inspekcja wizualna","Weryfikacja funkcjonalna (HASS)","Wnioski i zapis"];
+
+/* Tytuł raportu zależny od rodzaju aktywności wybranej w kroku 1 */
+const ACTIVITY_TITLES = {
+  "Wizyta Serwisowa":"Wizyta serwisowa",
+  "Ride Along":"Wizyta serwisowa (Ride Along)",
+  "Inspekcja wejściowa (Incoming)":"Inspekcja wejściowa (Incoming)",
+  "Inspekcja zwrotna":"Inspekcja zwrotna",
+  "Inspekcja QA":"Inspekcja QA",
+  "Inne":"Raport inspekcji"
+};
+function reportTitle(r){
+  const t = (r && r.type) ? String(r.type).trim() : "";
+  return ACTIVITY_TITLES[t] || t || "Raport inspekcji";
+}
 
 /* Production year — official table from the Serial Number and Check Digit Management Rules.
    Letters repeat every 20 years, so we take the latest plausible year. */
@@ -1041,12 +1051,22 @@ function applyHassColor(){
   el.classList.toggle("fail", el.value === "FAIL");
 }
 $("#hassResult").addEventListener("change", applyHassColor);
+
+/* tytuł w nagłówku = wybrany rodzaj aktywności */
+function applyActivityTitle(){
+  const el = $("#appTitle");
+  if(!el) return;
+  const sel = $("#typeInput");
+  const t = sel ? sel.value : (draft.type || "");
+  el.textContent = t ? reportTitle({type:t}) : "Wizyta serwisowa i inspekcja";
+}
+$("#typeInput").addEventListener("change", applyActivityTitle);
 function writeForm(){
   $$("[data-field]").forEach(el=>{ el.value = draft[el.dataset.field] || ""; });
   $$(".errcode").forEach((el,i)=> el.value = (draft.errors && draft.errors[i]) || "");
   $$(".partline").forEach((el,i)=> el.value = (draft.parts && draft.parts[i]) || "");
   seriesValue = draft.series || "";
-  renderThumbs(); applySerial(); applyModel(); applyWarranty(); applyHassColor();
+  renderThumbs(); applySerial(); applyModel(); applyWarranty(); applyHassColor(); applyActivityTitle();
   if(typeof updateReturnType === "function") updateReturnType();
 }
 
@@ -1180,11 +1200,11 @@ async function openScanner(field){
       }catch(_){}
       detector = new window.BarcodeDetector({formats: formats});
     }
-    scanStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}, width:{ideal:1920}, height:{ideal:1080}}});
+    scanStream = await openCamera();
     const v = $("#scanVideo");
     v.srcObject = scanStream; v.setAttribute("playsinline","");
     await v.play();
-    setupTorch();
+    setupCamera();
     loopScan();
   }catch(err){
     const name = err && err.name ? err.name : "";
@@ -1196,27 +1216,102 @@ async function openScanner(field){
     showDiag(why);
   }
 }
-function setupTorch(){
-  const btn = $("#scanTorch");
-  btn.hidden = true;
-  try{
-    const track = scanStream.getVideoTracks()[0];
-    const caps = track.getCapabilities ? track.getCapabilities() : {};
-    if(caps && "torch" in caps){
-      btn.hidden = false;
-      let on = false;
-      btn.onclick = ()=>{ on = !on; track.applyConstraints({advanced:[{torch:on}]}).catch(()=>{}); btn.textContent = on ? "Latarka wł." : "Latarka"; };
+
+/* Uruchomienie aparatu z autofkursem ciągłym. Kolejne próby: z autofkursem
+   w constraints -> bez niego, żeby brak obsługiwanej opcji nie blokował startu. */
+async function openCamera(){
+  const base = {facingMode:{ideal:"environment"}, width:{ideal:1920}, height:{ideal:1080},
+                frameRate:{ideal:30}, aspectRatio:{ideal:4/3}};
+  const tries = [
+    {video: Object.assign({focusMode:"continuous"}, base), audio:false},
+    {video: Object.assign({advanced:[{focusMode:"continuous"}]}, base), audio:false},
+    {video: base, audio:false}
+  ];
+  let lastErr = null;
+  for(const c of tries){
+    try{ return await navigator.mediaDevices.getUserMedia(c); }
+    catch(e){
+      const n = e && e.name;
+      if(n === "NotAllowedError" || n === "NotFoundError" || n === "NotReadableError") throw e;
+      lastErr = e;
     }
-  }catch(_){}
+  }
+  throw lastErr || new Error("getUserMedia");
 }
+
+let focusTimer = null;
+function setupCamera(){
+  const track = scanStream && scanStream.getVideoTracks()[0];
+  if(!track) return;
+  let caps = {};
+  try{ caps = track.getCapabilities ? track.getCapabilities() : {}; }catch(_){}
+
+  /* autofokus: ustaw tryb ciągły, jeśli urządzenie go udostępnia */
+  const modes = (caps.focusMode) || [];
+  const wantFocus = modes.indexOf("continuous") !== -1 ? "continuous"
+                  : (modes.indexOf("auto") !== -1 ? "auto" : "");
+  if(wantFocus){
+    track.applyConstraints({advanced:[{focusMode:wantFocus}]}).catch(()=>{});
+    /* co 2,5 s wymuś pojedyncze ostrzenie — poprawia ostrość przy statycznym kodzie */
+    if(modes.indexOf("single-shot") !== -1){
+      clearInterval(focusTimer);
+      focusTimer = setInterval(()=>{
+        track.applyConstraints({advanced:[{focusMode:"continuous"}]}).catch(()=>{});
+      }, 2500);
+    }
+  }
+
+  const fbtn = $("#scanFocus");
+  fbtn.disabled = modes.indexOf("single-shot") === -1 && modes.indexOf("continuous") === -1;
+  fbtn.onclick = ()=>{
+    track.applyConstraints({advanced:[{focusMode:"single-shot"}]})
+      .then(()=> toast("Ostrzenie…"))
+      .catch(()=>{ track.applyConstraints({advanced:[{focusMode:"continuous"}]}).catch(()=>{}); toast("Autofokus ciągły"); });
+    if(wantFocus) setTimeout(()=> track.applyConstraints({advanced:[{focusMode:wantFocus}]}).catch(()=>{}), 1200);
+  };
+
+  /* latarka */
+  const tbtn = $("#scanTorch");
+  if("torch" in caps){
+    tbtn.disabled = false;
+    tbtn.textContent = "Latarka";
+    tbtn.classList.remove("act");
+    let on = false;
+    tbtn.onclick = ()=>{
+      on = !on;
+      track.applyConstraints({advanced:[{torch:on}]}).catch(()=>{ on = !on; });
+      tbtn.textContent = on ? "Latarka wł." : "Latarka";
+      tbtn.classList.toggle("act", on);
+    };
+  }else{
+    tbtn.disabled = true;
+    tbtn.textContent = "Latarka (brak)";
+    tbtn.classList.remove("act");
+    tbtn.onclick = ()=> toast("To urządzenie nie udostępnia latarki w przeglądarce");
+  }
+}
+/* dotknięcie podglądu = pojedyncze ostrzenie */
+$("#scanVideo").addEventListener("click", ()=>{ const b=$("#scanFocus"); if(b && !b.disabled) b.click(); });
+/* Detekcja na zmniejszonej klatce z canvasu, co ~110 ms: lżej dla CPU,
+   dzięki czemu podgląd i autofokus pracują płynniej. */
+let scanCanvas = null, scanCtx = null, lastDetect = 0;
 function loopScan(){
   const v = $("#scanVideo");
+  if(!scanCanvas){ scanCanvas = document.createElement("canvas"); scanCtx = scanCanvas.getContext("2d", {willReadFrequently:true}); }
   const step = async ()=>{
     if(!scanStream) return;
-    try{
-      const codes = await detector.detect(v);
-      if(codes && codes.length){ finishScan(codes.map(c=> c.rawValue).join("\n")); return; }
-    }catch(_){}
+    const now = performance.now();
+    if(v.readyState >= 2 && v.videoWidth && now - lastDetect > 110){
+      lastDetect = now;
+      try{
+        const scale = Math.min(1, 1280 / v.videoWidth);
+        const w = Math.round(v.videoWidth * scale), h = Math.round(v.videoHeight * scale);
+        if(scanCanvas.width !== w || scanCanvas.height !== h){ scanCanvas.width = w; scanCanvas.height = h; }
+        scanCtx.drawImage(v, 0, 0, w, h);
+        const codes = await detector.detect(scanCanvas);
+        if(codes && codes.length){ finishScan(codes.map(c=> c.rawValue).join("\n")); return; }
+      }catch(_){}
+    }
     scanRAF = requestAnimationFrame(step);
   };
   scanRAF = requestAnimationFrame(step);
@@ -1303,14 +1398,15 @@ function finishScan(value){
 function closeScanner(){
   if(scanRAF) cancelAnimationFrame(scanRAF);
   scanRAF = null;
+  clearInterval(focusTimer); focusTimer = null;
   if(scanStream){ scanStream.getTracks().forEach(t=> t.stop()); scanStream = null; }
   $("#scanVideo").srcObject = null;
-  $("#scanTorch").hidden = true;
+  $("#scanTorch").classList.remove("act");
+  $("#scanTorch").textContent = "Latarka";
   $("#scanDiag").classList.remove("on");
   $("#scanner").classList.remove("on","nocam");
 }
 $("#scanClose").addEventListener("click", closeScanner);
-$("#scanFallback").addEventListener("click", ()=> $("#scanFile").click());
 function submitManual(){
   const v = $("#scanManual").value.trim();
   if(!v){ toast("Wpisz kod"); return; }
@@ -1319,25 +1415,6 @@ function submitManual(){
 $("#scanManualOk").addEventListener("click", submitManual);
 $("#scanManual").addEventListener("keydown", e=>{ if(e.key === "Enter"){ e.preventDefault(); submitManual(); } });
 
-$("#scanFile").addEventListener("change", async e=>{
-  const f = e.target.files && e.target.files[0];
-  e.target.value = "";
-  if(!f) return;
-  const msg = $("#scanMsg");
-  if(!("BarcodeDetector" in window)){
-    msg.textContent = "Zrobiono zdjęcie, ale ta przeglądarka nie potrafi odczytać kodu — wpisz wartości poniżej.";
-    showDiag(""); $("#scanManual").focus(); return;
-  }
-  try{
-    if(!detector) detector = new window.BarcodeDetector();
-    const bmp = await createImageBitmap(f);
-    const codes = await detector.detect(bmp);
-    if(codes && codes.length) finishScan(codes.map(c=> c.rawValue).join("\n"));
-    else msg.textContent = "Nie znaleziono kodu na zdjęciu. Spróbuj bliżej, w lepszym świetle.";
-  }catch(err){
-    msg.textContent = "Nie udało się odczytać kodu — wpisz wartości ręcznie.";
-  }
-});
 $$("[data-scan]").forEach(b=> b.addEventListener("click", ()=> openScanner(b.dataset.scan)));
 
 /* =====================================================================
@@ -1771,12 +1848,13 @@ function printRecord(r){
   const kv = (k,v)=> '<tr><td class="k">'+esc(k)+'</td><td>'+esc(v||"—")+'</td></tr>';
   const media = [].concat(r.photosDefect||[], r.hassImages||[]).filter(s=> String(s).indexOf("data:video") !== 0).slice(0,8);
   $("#printarea").innerHTML =
-  '<div class="p-head"><h1>Wizyta serwisowa (Ride Along) i inspekcja WH — SESA QA</h1>'+
+  '<div class="p-head"><h1>'+esc(reportTitle(r))+'</h1>'+
   '<div class="sub">Model: <b>'+esc(r.modelCode||"—")+'</b><br>S/N: '+esc(r.serialNumber||"—")+
   '<br>Nr '+esc(r.no||"—")+' · '+new Date(r.createdAt).toLocaleDateString("pl-PL")+'</div></div>'+
   '<div class="p-grid">'+
     '<div class="p-sec"><h2>Opis klienta</h2><table class="p-tab">'+
       kv("Sales", r.sales)+kv("Rodzaj zgłoszenia", r.type)+
+      kv("Serwis", r.service)+kv("Technik", r.technician)+
       (r.returnType ? kv("Rodzaj zwrotu", r.returnType) : "")+
       kv("Data wizyty", r.visitDate)+kv("Fabryka", r.plant)+
       kv("Miesiąc produkcji", r.productionMonth)+kv("Rok produkcji", r.productionYear)+
@@ -1787,7 +1865,7 @@ function printRecord(r){
     '<div class="p-sec"><h2>Inspekcja SEPM</h2><table class="p-tab">'+
       kv("Rzeczywista usterka", r.realDefect)+kv("Rodzaj", r.inspType)+kv("Kategoria", r.category)+
       kv("Rodzaj czynności", r.activityType)+kv("Czynności", r.activity)+
-      kv("HASS", r.hass)+kv("Licznik cykli", r.cyclesCounter)+
+      kv("HASS", r.hassResult)+kv("Licznik cykli", r.cyclesCounter)+
       kv("Zebrane części", r.collectedParts)+kv("Uwagi", r.remark)+
     '</table></div>'+
   '</div>'+
@@ -1998,7 +2076,7 @@ async function buildXLSX(records, withImages){
     put(19, cTxt(ref(19),5,r.activity||""));
     /* V Main Pictures — photos or a note */
     put(20, hasPics ? '<c r="'+ref(20)+'" s="5"/>' : cTxt(ref(20),5,r.mainPictures||""));
-    put(21, cTxt(ref(21),5,r.hass||""));
+    put(21, cTxt(ref(21),5,r.hass || r.hassResult || ""));
     const cc = parseInt(r.cyclesCounter,10);
     put(22, (!isNaN(cc) && String(cc) === String(r.cyclesCounter).trim()) ? cNum(ref(22),6,cc) : cTxt(ref(22),6,r.cyclesCounter||""));
     put(23, cTxt(ref(23),5,r.errorCodeHistory||""));
@@ -2153,6 +2231,13 @@ function askFilename(defaultName){
   const clean = String(typed).trim().replace(/[\\/:*?"<>|]/g, "_");
   return clean || defaultName;
 }
+/* Domyślna nazwa eksportu: tytuł zależny od rodzaju aktywności + data */
+function baseExportName(rows, ext){
+  const types = [];
+  (rows||[]).forEach(r=>{ const t = (r && r.type ? String(r.type).trim() : ""); if(t && types.indexOf(t) === -1) types.push(t); });
+  const title = types.length === 1 ? reportTitle({type:types[0]}) : "Raport inspekcji";
+  return title.replace(/[\\/:*?"<>|\s]+/g, "_") + "_" + todayISO() + ext;
+}
 async function exportXLSX(withImages){
   const rows = (await dbAll()).sort((a,b)=>{
     const na = parseInt(a.no,10), nb = parseInt(b.no,10);
@@ -2160,7 +2245,7 @@ async function exportXLSX(withImages){
     return (a.createdAt||0) - (b.createdAt||0);
   });
   if(!rows.length){ toast("Baza danych jest pusta"); return; }
-  const fname = askFilename("SESA_Wizyta_Serwisowa_"+todayISO()+".xlsx");
+  const fname = askFilename(baseExportName(rows, ".xlsx"));
   if(!fname) return;
   toast(withImages ? "Tworzenie Excela ze zdjęciami…" : "Tworzenie Excela…");
   try{
@@ -2184,13 +2269,16 @@ function buildCSV(rows, sep){
   const g = new Array(27).fill(""); g[0] = "Opis klienta"; g[15] = "Inspekcja SEPM";
   const line2 = g.map(csvCell).join(sep);
   const line3 = XL_HEADERS.map(csvCell).join(sep);
-  const body = rows.map(r=> FIELDS.map(f=> csvCell(r[f]==null?"":r[f])).join(sep));
+  const body = rows.map(r=> FIELDS.map(f=>{
+    const v = f === "hass" && (r[f] == null || r[f] === "") ? (r.hassResult || "") : r[f];
+    return csvCell(v==null?"":v);
+  }).join(sep));
   return "\uFEFF"+[line1,line2,line3].concat(body).join("\r\n")+"\r\n";
 }
 async function exportCSV(sep, label){
   const rows = (await dbAll()).sort((a,b)=> (a.createdAt||0)-(b.createdAt||0));
   if(!rows.length){ toast("Baza danych jest pusta"); return; }
-  const fname = askFilename("SESA_Wizyta_Serwisowa_"+todayISO()+".csv");
+  const fname = askFilename(baseExportName(rows, ".csv"));
   if(!fname) return;
   download(new Blob([buildCSV(rows, sep)], {type:"text/csv;charset=utf-8"}), fname);
   toast("CSV ("+label+") pobrany");
@@ -2201,9 +2289,9 @@ $("#csvComma").addEventListener("click", ()=> exportCSV(",","przecinek"));
 $("#jsonBtn").addEventListener("click", async ()=>{
   const rows = await dbAll();
   if(!rows.length){ toast("Baza danych jest pusta"); return; }
-  const fname = askFilename("SESA_kopia_"+todayISO()+".json");
+  const fname = askFilename("Kopia_bazowa_"+todayISO()+".json");
   if(!fname) return;
-  download(new Blob([JSON.stringify({app:"SESA QA", version:2, exportedAt:new Date().toISOString(), records:rows})],
+  download(new Blob([JSON.stringify({app:"THOR", version:2, exportedAt:new Date().toISOString(), records:rows})],
     {type:"application/json"}), fname);
   toast("Pobrano kopię zapasową JSON");
 });
@@ -2222,14 +2310,14 @@ function shareName(ext){
 }
 function shareSummaryText(r){
   return [
-    "Inspekcja SESA QA",
+    reportTitle(r),
     "Serwis: " + (r.service || "—") + " · Technik: " + (r.technician || "—"),
     "Rodzaj zgłoszenia: " + (r.type || "—"),
     "Model: " + (r.modelCode || "—"),
     "S/N: " + (r.serialNumber || "—"),
     "Fabryka: " + (r.plant || "—") + " · PJT: " + (r.pjt || "—"),
     "Data wizyty: " + (r.visitDate || "—"),
-    "Wynik HASS: " + (r.hassResult || "—") + (r.hass ? " · Opis HASS: " + r.hass : ""),
+    "Wynik HASS: " + (r.hassResult || "—"),
     "Lokalizacja: " + (r.unitLocation || "—")
   ].join("\n");
 }
@@ -2260,7 +2348,7 @@ $("#shareXlsx").addEventListener("click", async ()=>{
 });
 $("#shareJsonBtn").addEventListener("click", async ()=>{
   if(!shareRecord) return;
-  const blob = new Blob([JSON.stringify({app:"SESA QA", version:2, exportedAt:new Date().toISOString(), records:[shareRecord]}, null, 2)],
+  const blob = new Blob([JSON.stringify({app:"THOR", version:2, exportedAt:new Date().toISOString(), records:[shareRecord]}, null, 2)],
     {type:"application/json"});
   await shareBlob(blob, shareName(".json"));
 });
@@ -2286,7 +2374,7 @@ $("#shareWa").addEventListener("click", async ()=>{
 function openShare(rec){
   shareRecord = rec;
   const txt = shareSummaryText(rec);
-  const subj = "Inspekcja S/N " + (rec.serialNumber || rec.id);
+  const subj = reportTitle(rec) + " — S/N " + (rec.serialNumber || rec.id);
   $("#shareInfo").textContent = "S/N " + (rec.serialNumber || "—") + " · " + (rec.modelCode || "—") + " · zapisano " + new Date().toLocaleString("pl-PL");
   $("#shareMail").href = "mailto:" + SHARE_MAIL + "?subject=" + encodeURIComponent(subj) + "&body=" + encodeURIComponent(txt);
   $("#shareModal").classList.add("on");
