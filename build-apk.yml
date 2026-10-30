@@ -1,0 +1,124 @@
+name: Build THOR APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Android APK (debug + release)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      APK_NAME: THOR-MQC-Inspection
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: JDK 21 (wymagany przez Capacitor 8)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Android SDK (platforma 36, build-tools)
+        run: |
+          set -euo pipefail
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" --install "platform-tools" "platforms;android-36" "build-tools;36.0.0" > /dev/null
+          ls "$ANDROID_HOME/build-tools"
+
+      - name: Przygotuj www/index.html (kopiowanie + patch natywny)
+        run: node scripts/prepare-www.mjs
+
+      - name: Instalacja zależności npm
+        run: npm install --no-audit --no-fund
+
+      - name: Projekt Android (cap add → configure → cap sync)
+        run: |
+          set -euo pipefail
+          rm -rf android
+          npx cap add android
+          node scripts/configure-android.mjs
+          npx cap sync android
+
+      - name: Gradle assembleDebug + assembleRelease
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace assembleDebug assembleRelease
+
+      - name: Podpisanie APK release
+        env:
+          KEYSTORE_BASE64: ${{ secrets.THOR_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.THOR_KEYSTORE_PASSWORD }}
+          KEY_ALIAS_SECRET: ${{ secrets.THOR_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          BT="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
+          echo "Build-tools: $BT"
+          UNSIGNED="android/app/build/outputs/apk/release/app-release-unsigned.apk"
+          DEBUG_APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          test -f "$UNSIGNED" || { echo "::error::Brak $UNSIGNED"; exit 1; }
+          test -f "$DEBUG_APK" || { echo "::error::Brak $DEBUG_APK"; exit 1; }
+          mkdir -p dist signing
+
+          if [ -n "${KEYSTORE_BASE64:-}" ] && [ -n "${KEYSTORE_PASSWORD:-}" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > signing/release.jks
+            export KS_PASS="$KEYSTORE_PASSWORD"
+            KEY_ALIAS="${KEY_ALIAS_SECRET:-thor}"
+            echo "::notice::Podpisano STAŁYM kluczem z sekretów repozytorium (aktualizacje zachowają dane aplikacji)."
+          else
+            export KS_PASS="thor-$(openssl rand -hex 16)"
+            echo "::add-mask::$KS_PASS"
+            KEY_ALIAS="thor"
+            keytool -genkeypair -noprompt \
+              -keystore signing/release.jks -storetype PKCS12 \
+              -alias "$KEY_ALIAS" -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "$KS_PASS" -keypass "$KS_PASS" \
+              -dname "CN=THOR MQC Inspection, OU=MQC W/M, O=Samsung Electronics Poland Manufacturing, C=PL"
+            echo "::warning::Podpisano TYMCZASOWYM kluczem. Kolejna wersja nie zainstaluje się jako aktualizacja — uruchom workflow 'Generate signing keystore' i dodaj sekrety."
+          fi
+
+          "$BT/zipalign" -p -f 4 "$UNSIGNED" signing/aligned.apk
+          "$BT/apksigner" sign \
+            --ks signing/release.jks --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass env:KS_PASS --key-pass env:KS_PASS \
+            --out "dist/${APK_NAME}.apk" signing/aligned.apk
+          "$BT/apksigner" verify --verbose "dist/${APK_NAME}.apk"
+
+          cp "$DEBUG_APK" "dist/${APK_NAME}-debug.apk"
+          rm -rf signing
+
+          {
+            echo "### THOR APK — build #${GITHUB_RUN_NUMBER} (wersja 1.0.${GITHUB_RUN_NUMBER})"
+            echo ""
+            echo "| Plik | Rozmiar | SHA-256 |"
+            echo "|---|---|---|"
+            for f in dist/*.apk; do
+              echo "| $(basename "$f") | $(du -h "$f" | cut -f1) | \`$(sha256sum "$f" | cut -c1-16)…\` |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publikacja artefaktu
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APK_NAME }}
+          path: dist/*.apk
+          if-no-files-found: error
+          retention-days: 30

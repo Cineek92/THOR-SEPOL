@@ -1,0 +1,24 @@
+{
+  "name": "thor-mqc-inspection",
+  "version": "1.0.0",
+  "private": true,
+  "description": "THOR — MQC W/M: Wizyta serwisowa (Ride Along) i inspekcja WH — Android (Capacitor)",
+  "scripts": {
+    "prepare:www": "node scripts/prepare-www.mjs",
+    "android:add": "npx cap add android",
+    "android:configure": "node scripts/configure-android.mjs",
+    "android:sync": "npx cap sync android"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/filesystem": "8.1.4",
+    "@capacitor/share": "8.0.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.3"
+  }
+}

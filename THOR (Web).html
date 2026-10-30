@@ -1,0 +1,2572 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0e1620">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>THOR — MQC W/M: Wizyta serwisowa (Ride Along) i inspekcja WH</title>
+<style>
+:root{
+  --bg:#f2f4f7; --surface:#ffffff; --surface-2:#e9edf2; --line:#c9d2dc; --line-soft:#dde4ec;
+  --ink:#101820; --ink-2:#4a5765; --ink-3:#76838f;
+  --signal:#0b63c5; --signal-ink:#ffffff;
+  --ok:#12795a; --warn:#b06400; --bad:#b52b2b;
+  --radius:10px; --tap:48px;
+  --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px);
+}
+html[data-theme="dark"]{
+  --bg:#0e1620; --surface:#16212d; --surface-2:#1e2b3a; --line:#2c3d4f; --line-soft:#243444;
+  --ink:#e8eef5; --ink-2:#a8b8c7; --ink-3:#7d8fa0;
+  --signal:#4d9bf0; --signal-ink:#06101b;
+  --ok:#3fc79a; --warn:#e0a44a; --bad:#f0736e;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);
+  font-family:"Segoe UI Variable Text","Segoe UI",Roboto,-apple-system,BlinkMacSystemFont,Arial,sans-serif;
+  font-size:16px;line-height:1.45;padding-bottom:calc(80px + var(--safe-b));-webkit-text-size-adjust:100%}
+h1,h2,h3{margin:0;font-weight:650;letter-spacing:-0.01em}
+button{font:inherit;color:inherit}
+
+.appbar{position:sticky;top:0;z-index:40;padding:calc(10px + var(--safe-t)) 14px 10px;
+  background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}
+.appbar .mark{width:38px;height:38px;flex:0 0 38px;border-radius:9px;background:var(--signal);
+  color:var(--signal-ink);display:grid;place-items:center;font-weight:700;font-size:13px}
+.appbar .titles{flex:1;min-width:0}
+.appbar h1{font-size:17px;line-height:1.15}
+.appbar p{margin:1px 0 0;font-size:12px;color:var(--ink-3)}
+.icon-btn{min-width:var(--tap);min-height:var(--tap);border:1px solid var(--line);background:var(--surface-2);
+  border-radius:10px;display:grid;place-items:center;font-size:18px;cursor:pointer}
+.icon-btn:active{transform:scale(.96)}
+
+.wrap{padding:14px;max-width:760px;margin:0 auto}
+.view[hidden]{display:none}
+
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
+.stat{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--radius);padding:12px 13px}
+.stat b{display:block;font-size:26px;line-height:1.05;font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--ink-3)}
+.stat.wide{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center}
+.stat.wide b{font-size:18px}
+
+.searchrow{display:flex;gap:8px;margin-bottom:12px}
+.searchrow input{flex:1}
+
+label.f{display:block;margin:0 0 12px}
+label.f > span{display:block;font-size:13px;color:var(--ink-2);margin-bottom:5px}
+input,select,textarea{width:100%;min-height:var(--tap);padding:11px 12px;font:inherit;font-size:16px;
+  background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:var(--radius)}
+textarea{min-height:92px;resize:vertical;line-height:1.4}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--signal);outline-offset:1px;border-color:var(--signal)}
+input[readonly]{background:var(--surface-2);color:var(--ink-2)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+.with-btn{display:flex;gap:8px}
+.with-btn input{flex:1}
+.with-btn button{flex:0 0 auto;padding:0 14px;min-width:var(--tap);min-height:var(--tap)}
+
+.btn{min-height:var(--tap);padding:0 16px;border-radius:var(--radius);border:1px solid var(--line);
+  background:var(--surface-2);color:var(--ink);cursor:pointer;font-weight:560;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn:active{transform:scale(.98)}
+.btn.primary{background:var(--signal);border-color:var(--signal);color:var(--signal-ink)}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn.block{width:100%}
+.btn.sm{min-height:40px;padding:0 12px;font-size:14px}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+
+.card{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--radius);padding:13px;margin-bottom:10px}
+.card h3{font-size:16px}
+.card .meta{font-size:13px;color:var(--ink-3);margin-top:3px}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.tag{font-size:12px;padding:3px 8px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line-soft);color:var(--ink-2)}
+.tag.bad{color:var(--bad);border-color:var(--bad)}
+.tag.ok{color:var(--ok);border-color:var(--ok)}
+.cardactions{display:flex;gap:8px;margin-top:11px;flex-wrap:wrap}
+.empty{text-align:center;padding:40px 18px;color:var(--ink-3)}
+.empty b{display:block;color:var(--ink);font-size:17px;margin-bottom:6px}
+
+.stepper{display:flex;gap:5px;margin-bottom:6px}
+.stepper button{flex:1;min-height:44px;border-radius:8px;border:1px solid var(--line);
+  background:var(--surface);color:var(--ink-3);font-weight:600;font-size:14px;cursor:pointer}
+.stepper button[aria-current="true"]{background:var(--signal);border-color:var(--signal);color:var(--signal-ink)}
+.stepper button.done{color:var(--ok);border-color:var(--ok)}
+.steplabel{font-size:12px;color:var(--ink-3);margin:0 0 14px;text-align:center}
+.steptitle{font-size:19px;margin-bottom:2px}
+.stepsub{font-size:13px;color:var(--ink-3);margin:0 0 14px}
+fieldset.step{border:0;padding:0;margin:0}
+fieldset.step[hidden]{display:none}
+.section-h{font-size:13px;color:var(--ink-2);border-bottom:1px solid var(--line-soft);padding-bottom:6px;margin:18px 0 12px}
+.auto{font-size:12.5px;margin:-6px 0 12px;color:var(--ok)}
+.auto.err{color:var(--bad)}
+.hint{font-size:12px;color:var(--ink-3);margin:6px 0 0}
+
+.errrow{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.errrow .n{width:26px;flex:0 0 26px;text-align:right;color:var(--ink-3);font-variant-numeric:tabular-nums}
+
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin-top:10px}
+.thumb{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb button{position:absolute;top:4px;right:4px;width:30px;height:30px;border-radius:50%;
+  border:0;background:rgba(0,0,0,.68);color:#fff;font-size:16px;line-height:1;cursor:pointer}
+
+.formnav{position:fixed;left:0;right:0;bottom:0;z-index:35;display:flex;gap:8px;
+  padding:10px 14px calc(10px + var(--safe-b));background:var(--surface);border-top:1px solid var(--line)}
+.formnav .btn{flex:1}
+
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:35;display:flex;background:var(--surface);
+  border-top:1px solid var(--line);padding-bottom:var(--safe-b)}
+.tabbar button{flex:1;min-height:var(--tap);border:0;background:none;cursor:pointer;display:flex;
+  flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 4px;font-size:11px;color:var(--ink-3)}
+.tabbar button .ic{font-size:19px;line-height:1}
+.tabbar button[aria-current="true"]{color:var(--signal);font-weight:650}
+
+#toast{position:fixed;left:50%;top:calc(8px + var(--safe-t));transform:translate(-50%,-160%);z-index:90;
+  background:var(--ink);color:var(--bg);padding:9px 15px;border-radius:999px;font-size:13.5px;font-weight:560;
+  transition:transform .22s ease;max-width:92vw;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+#toast.show{transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+
+#plate{position:fixed;inset:0;z-index:95;background:var(--bg);display:none;flex-direction:column;
+  padding-top:var(--safe-t);padding-bottom:var(--safe-b)}
+#plate.on{display:flex}
+/* wynik HASS: PASS zielony / FAIL czerwony */
+#hassInput.pass{color:#0a7d28;border-color:#0a7d28;font-weight:700}
+#hassInput.fail{color:#c0122a;border-color:#c0122a;font-weight:700}
+/* modal udostępniania po zapisie */
+#shareModal{position:fixed;inset:0;z-index:96;background:var(--bg);display:none;flex-direction:column;
+  padding-top:var(--safe-t);padding-bottom:var(--safe-b)}
+#shareModal.on{display:flex}
+.share-body{flex:1;overflow:auto;padding:14px}
+.share-body .btn,.share-body .btn-a{width:100%;margin-bottom:8px;text-decoration:none}
+.share-note{font-size:13px;color:var(--ink-2);margin:0 0 12px}
+.plate-head{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:10px 14px;border-bottom:1px solid var(--line);background:var(--surface)}
+.plate-head b{font-size:16px}
+.plate-img{flex:0 0 40vh;overflow:auto;background:#0b0f14;position:relative}
+.plate-img img{display:block;width:100%;transform-origin:0 0;image-rendering:auto}
+.plate-zoom{display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--surface);
+  border-bottom:1px solid var(--line);font-size:13px;color:var(--ink-3)}
+.plate-zoom input{flex:1;min-height:32px;padding:0}
+.plate-form{flex:1;overflow:auto;padding:14px}
+.plate-form input[type="text"]{font-variant-numeric:tabular-nums;letter-spacing:.04em;font-size:17px}
+.chk{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--ink-2);min-height:var(--tap)}
+.chk input{width:22px;height:22px;min-height:22px;flex:0 0 22px}
+
+#scanner{position:fixed;inset:0;z-index:100;background:#000;display:none;flex-direction:column}
+#scanner.on{display:flex}
+#scanner video{flex:1;width:100%;object-fit:cover;background:#000}
+.scanframe{position:absolute;left:8%;right:8%;top:32%;height:170px;border:3px solid #fff;border-radius:12px;
+  box-shadow:0 0 0 100vmax rgba(0,0,0,.45)}
+.scanmsg{position:absolute;left:0;right:0;top:calc(14px + var(--safe-t));text-align:center;color:#fff;
+  font-size:14px;z-index:3;text-shadow:0 1px 4px #000;padding:0 20px}
+.scandiag{position:relative;z-index:3;padding:12px 16px;background:#131b24;color:#cfdae6;font-size:13px;
+  line-height:1.5;max-height:42vh;overflow:auto;border-top:1px solid #2a3a4b;display:none}
+.scandiag.on{display:block}
+.scandiag b{color:#fff;display:block;margin-bottom:5px;font-size:14px}
+.scandiag ol{margin:7px 0 0;padding-left:20px}
+.scandiag li{margin-bottom:5px}
+.scandiag code{background:#0b1219;padding:1px 5px;border-radius:4px;font-size:12px;word-break:break-all}
+.scanmanual{position:relative;z-index:3;display:flex;gap:8px;padding:10px 14px 0;background:#0b0f14}
+.scanmanual input{background:#1b2430;border-color:#2f3d4d;color:#fff}
+.scanmanual .btn{background:#1b2430;border-color:#2f3d4d;color:#fff;flex:0 0 auto}
+.scanbar{position:relative;z-index:3;display:flex;gap:8px;padding:12px 14px calc(12px + var(--safe-b));background:#0b0f14}
+.scanbar .btn{flex:1;background:#1b2430;border-color:#2f3d4d;color:#fff}
+#scanner.nocam video,#scanner.nocam .scanframe{display:none}
+#scanner.nocam{justify-content:flex-end;background:#0b0f14}
+
+.kv{display:grid;grid-template-columns:44% 56%;border:1px solid var(--line-soft);border-radius:var(--radius);overflow:hidden}
+.kv div{padding:8px 11px;border-bottom:1px solid var(--line-soft);font-size:14px;word-break:break-word;white-space:pre-wrap}
+.kv div:nth-child(odd){background:var(--surface-2);color:var(--ink-2)}
+.kv div:nth-child(even){background:var(--surface)}
+.kv div:nth-last-child(-n+2){border-bottom:0}
+
+#printarea{display:none}
+@media print{
+  @page{size:A4 portrait;margin:10mm}
+  body{background:#fff;color:#000;padding:0;font-size:9.5pt}
+  body > *{display:none !important}
+  #printarea{display:block !important}
+  .p-head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #000;padding-bottom:5px;margin-bottom:9px}
+  .p-head h1{font-size:15pt;margin:0}
+  .p-head .sub{font-size:8.5pt;text-align:right;line-height:1.3}
+  .p-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+  .p-sec{break-inside:avoid;margin-bottom:7px}
+  .p-sec h2{font-size:9pt;border-bottom:1px solid #000;padding-bottom:2px;margin:0 0 4px}
+  table.p-tab{width:100%;border-collapse:collapse;font-size:8.5pt}
+  table.p-tab td{border:1px solid #999;padding:2px 4px;vertical-align:top;white-space:pre-wrap}
+  table.p-tab td.k{background:#eee;width:38%;font-weight:600}
+  .p-err{width:100%;border-collapse:collapse;font-size:8.5pt}
+  .p-err th,.p-err td{border:1px solid #999;padding:2px 4px;text-align:left}
+  .p-err th{background:#eee;width:24px}
+  .p-photos{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+  .p-photos img{width:100%;height:30mm;object-fit:cover;border:1px solid #999}
+  .p-foot{position:fixed;bottom:0;left:0;right:0;font-size:7.5pt;border-top:1px solid #000;padding-top:3px;display:flex;justify-content:space-between}
+}
+</style>
+</head>
+<body>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<header class="appbar">
+  <div class="mark">QA</div>
+  <div class="titles">
+    <h1>Wizyta serwisowa (Ride Along) i inspekcja WH</h1>
+    <p id="subline">THOR · MQC W/M Samsung Electronics Poland Manufacturing</p>
+  </div>
+  <button class="icon-btn" id="themeBtn" title="Przełącz motyw" aria-label="Przełącz motyw">◐</button>
+</header>
+
+<!-- ============ DASHBOARD ============ -->
+<section class="view wrap" id="viewDash">
+  <div class="stats">
+    <div class="stat"><b id="stTotal">0</b><span>Inspekcje łącznie</span></div>
+    <div class="stat"><b id="stMonth">0</b><span>W tym miesiącu</span></div>
+    <div class="stat"><b id="stTech">0</b><span>Techniczne</span></div>
+    <div class="stat"><b id="stNdf">0</b><span>NDF</span></div>
+    <div class="stat wide"><span>Zapisane pliki zdjęć/wideo</span><b id="stPhotos">0</b></div>
+  </div>
+  <div class="searchrow">
+    <input id="search" type="search" placeholder="Szukaj: S/N, model, seria, usterka" autocomplete="off">
+    <button class="btn" id="clearSearch" aria-label="Wyczyść">✕</button>
+  </div>
+  <div id="list"></div>
+</section>
+
+<!-- ============ FORM ============ -->
+<section class="view wrap" id="viewForm" hidden>
+  <nav class="stepper" id="stepper" aria-label="Kroki inspekcji">
+    <button type="button" data-step="1">1</button>
+    <button type="button" data-step="2">2</button>
+    <button type="button" data-step="3">3</button>
+    <button type="button" data-step="4">4</button>
+    <button type="button" data-step="5">5</button>
+  </nav>
+  <p class="steplabel" id="stepLabel">Dokumenty klienta</p>
+
+  <form id="form" autocomplete="off">
+
+    <!-- KROK 1 — DOKUMENTY KLIENTA -->
+    <fieldset class="step" data-step="1">
+      <h2 class="steptitle">Dokumenty klienta</h2>
+      <p class="stepsub">Zanim dotkniesz urządzenia: co zgłoszono, kiedy kupiono, kiedy przyjęto zgłoszenie.</p>
+
+      <div class="grid2">
+        <label class="f"><span>Numer pozycji (No)</span><input type="number" data-field="no" inputmode="numeric"></label>
+        <label class="f"><span>Sales</span><input type="text" data-field="sales" placeholder="opcjonalnie"></label>
+      </div>
+
+      <label class="f"><span>Rodzaj zgłoszenia</span>
+        <select data-field="type" id="typeInput">
+          <option value="">—</option>
+          <option>Wizyta Serwisowa</option>
+          <option>Ride Along</option>
+          <option>Inspekcja wejściowa (Incoming)</option>
+          <option>Inspekcja zwrotna</option>
+          <option>Inspekcja QA</option>
+          <option>Inne</option>
+        </select>
+      </label>
+
+      <div id="returnTypeWrap" hidden>
+        <label class="f"><span>Rodzaj zwrotu (analiza zwrotów)</span>
+          <input type="text" data-field="returnType" list="dlReturnType" placeholder="np. TB4 / TAO" autocapitalize="characters">
+          <datalist id="dlReturnType">
+            <option>TB4</option><option>TAO</option><option>TAW</option><option>TBC</option>
+            <option>TBZ</option><option>TDR</option><option>Inny</option>
+          </datalist>
+        </label>
+      </div>
+
+      <div class="grid2">
+        <label class="f"><span>Data wizyty</span><input type="date" data-field="visitDate"></label>
+        <label class="f"><span>Data zgłoszenia</span><input type="date" data-field="requestDate"></label>
+      </div>
+      <label class="f"><span>Data zakupu</span><input type="date" data-field="purchaseDate"></label>
+      <p class="auto" id="warrantyInfo"></p>
+
+      <label class="f"><span>Objaw zgłoszony przez klienta</span>
+        <textarea data-field="customerSymptom" placeholder="W brzmieniu zgłoszenia klienta"></textarea>
+      </label>
+
+      <label class="f"><span>Lokalizacja urządzenia u klienta</span>
+        <input type="text" data-field="unitLocation" list="dlLocation" placeholder="Kuchnia / Korytarz / Pokój / Kotłownia">
+        <datalist id="dlLocation">
+          <option>Kuchnia</option><option>Balkon</option><option>Łazienka</option>
+          <option>Korytarz</option><option>Pokój</option><option>Kotłownia</option>
+          <option>Piwnica</option><option>Inspekcja magazynowa</option><option>Inne</option>
+        </datalist>
+      </label>
+    </fieldset>
+
+    <!-- KROK 2 — IDENTYFIKACJA -->
+    <fieldset class="step" data-step="2" hidden>
+      <h2 class="steptitle">Identyfikacja urządzenia</h2>
+      <p class="stepsub">Zrób zdjęcie tabliczki znamionowej — odczytaj model z górnej linii, a numer seryjny z dolnej.</p>
+
+      <div class="btnrow" style="margin-bottom:14px">
+        <button type="button" class="btn primary" id="plateBtn" style="flex:1">Zdjęcie tabliczki znamionowej</button>
+        <button type="button" class="btn" data-scan="both">Skaner kodów</button>
+      </div>
+      <input type="file" id="plateFile" accept="image/*" capture="environment" hidden>
+
+      <label class="f"><span>Numer seryjny (S/N)</span>
+        <div class="with-btn">
+          <input type="text" data-field="serialNumber" id="snInput" autocapitalize="characters" placeholder="089A5ESY900295M">
+          <button type="button" class="btn" data-scan="serialNumber" aria-label="Skanuj S/N">▣</button>
+        </div>
+      </label>
+      <p class="auto" id="snDecoded"></p>
+
+      <label class="f"><span>Kod modelu</span>
+        <div class="with-btn">
+          <input type="text" data-field="modelCode" id="modelInput" autocapitalize="characters" placeholder="WW90CGC04DAEEC">
+          <button type="button" class="btn" data-scan="modelCode" aria-label="Skanuj model">▣</button>
+        </div>
+      </label>
+      <p class="auto" id="modelDecoded"></p>
+
+      <div class="grid2">
+        <label class="f"><span>Fabryka</span>
+          <input type="text" data-field="plant" id="plantInput" list="dlPlant" placeholder="SEPM">
+          <datalist id="dlPlant"><option>SEPM</option><option>SSEC</option><option>SEHC</option><option>TSE</option><option>SIEL</option></datalist>
+        </label>
+        <label class="f"><span>PJT</span><input type="text" data-field="pjt" id="pjtInput" readonly placeholder="wywnioskowany z modelu"></label>
+      </div>
+
+      <label class="f"><span>Seria (kolumna PJT w raporcie)</span>
+        <select id="seriesInput"><option value="">—</option></select>
+      </label>
+      <div id="seriesCustomWrap" hidden>
+        <label class="f"><span>Seria wpisana ręcznie</span>
+          <input type="text" id="seriesCustom" autocapitalize="characters" placeholder="np. WW3000F">
+        </label>
+      </div>
+      <p class="auto" id="seriesInfo"></p>
+
+      <div class="grid2">
+        <label class="f"><span>Miesiąc produkcji (M.RRRR)</span><input type="text" data-field="productionMonth" id="prodMonth" placeholder="9.2025"></label>
+        <label class="f"><span>Rok produkcji</span><input type="text" data-field="productionYear" id="prodYear" placeholder="2025"></label>
+      </div>
+
+      <div class="grid2">
+        <label class="f"><span>Typ wyświetlacza</span>
+          <select data-field="displayType" id="displayInput">
+            <option value="">—</option><option>LED</option><option>Ux</option>
+          </select>
+        </label>
+        <label class="f"><span>Typ dozownika</span>
+          <select data-field="dispenserType">
+            <option value="">—</option><option>Auto</option><option>Manual</option>
+          </select>
+        </label>
+      </div>
+      <p class="auto" id="dispInfo"></p>
+      <button type="button" class="btn sm" id="dispExcBtn">Zapisz ten dozownik jako wyjątek dla tego modelu</button>
+      <p class="hint" id="dispExcInfo"></p>
+    </fieldset>
+
+    <!-- KROK 3 — INSPEKCJA WIZUALNA -->
+    <fieldset class="step" data-step="3" hidden>
+      <h2 class="steptitle">Inspekcja wizualna</h2>
+      <p class="stepsub">Obejrzyj urządzenie i odczytaj historię kodów błędów — przed uruchomieniem HASS.</p>
+
+      <label class="f"><span>Inspekcja wizualna</span>
+        <textarea data-field="visualNotes" placeholder="Uszkodzenia, instalacja, poziomowanie, ślady ingerencji"></textarea>
+      </label>
+
+      <div class="section-h">Zdjęcia urządzenia i usterki</div>
+      <div class="btnrow">
+        <button type="button" class="btn" id="defShot">Zrób zdjęcie</button>
+        <button type="button" class="btn" id="defPick">Z galerii / wideo</button>
+      </div>
+      <input type="file" id="defCam" accept="image/*" capture="environment" hidden multiple>
+      <input type="file" id="defFile" accept="image/*,video/*" hidden multiple>
+      <div class="thumbs" id="defThumbs"></div>
+      <p class="hint">Pierwsze osiem zdjęć trafia do kolumny Main Pictures w Excelu. Nagrania wideo zapisują się w aplikacji (nie trafiają do Excela i PDF).</p>
+
+      <div class="section-h">Historia kodów błędów</div>
+      <div class="errrow"><span class="n">1.</span><input type="text" class="errcode" list="dlErr" placeholder="np. UB" autocapitalize="characters"></div>
+      <div class="errrow"><span class="n">2.</span><input type="text" class="errcode" list="dlErr" placeholder="np. DC" autocapitalize="characters"></div>
+      <div class="errrow"><span class="n">3.</span><input type="text" class="errcode" list="dlErr" placeholder="—" autocapitalize="characters"></div>
+      <div class="errrow"><span class="n">4.</span><input type="text" class="errcode" list="dlErr" placeholder="—" autocapitalize="characters"></div>
+      <div class="errrow"><span class="n">5.</span><input type="text" class="errcode" list="dlErr" placeholder="—" autocapitalize="characters"></div>
+      <datalist id="dlErr">
+        <option>UB</option><option>DC</option><option>SDC</option><option>dC1</option><option>ddC</option>
+        <option>4C</option><option>4E</option><option>5C</option><option>AC6</option><option>LC</option><option>3C</option><option>N/A</option>
+        <option>1E</option><option>6E</option><option>8C</option><option>8E</option><option>9E</option>
+        <option>bE</option><option>bE2</option><option>dE</option><option>dE1</option><option>dE2</option>
+        <option>HE</option><option>HE1</option><option>HE2</option><option>LE</option><option>OC</option>
+        <option>tE</option><option>tE1</option><option>tE3</option><option>UE</option><option>DC3</option>
+      </datalist>
+      <p class="hint">Puste pola zapisywane są jako „---”.</p>
+    </fieldset>
+
+    <!-- KROK 4 — HASS -->
+    <fieldset class="step" data-step="4" hidden>
+      <h2 class="steptitle">Weryfikacja funkcjonalna</h2>
+      <p class="stepsub">AutoDiagnoza HASS: stan początkowy, licznik cykli, wynik po wykonanej pracy.</p>
+
+      <div class="grid2">
+        <label class="f"><span>Wynik HASS</span>
+          <select data-field="hassResult" id="hassResult">
+            <option value="">—</option><option>PASS</option><option>NG</option><option>N/A</option>
+          </select>
+        </label>
+        <label class="f"><span>Licznik cykli</span><input type="text" data-field="cyclesCounter" placeholder="np. 279"></label>
+      </div>
+
+      <label class="f"><span>Opis HASS (trafia do kolumny HASS)</span>
+        <select data-field="hass" id="hassInput">
+          <option value="">—</option>
+          <option value="PASS">PASS</option>
+          <option value="FAIL">FAIL</option>
+        </select>
+      </label>
+
+      <label class="f"><span>Weryfikacja funkcjonalna</span>
+        <textarea data-field="functionalNotes" placeholder="Zachowanie w cyklu, hałas, wyciek, próba odtworzenia objawu"></textarea>
+      </label>
+
+      <div class="section-h">Zrzut ekranu HASS / tabliczka znamionowa</div>
+      <div class="btnrow">
+        <button type="button" class="btn" id="hassShot">Zrób zdjęcie</button>
+        <button type="button" class="btn" id="hassPick">Z galerii</button>
+      </div>
+      <input type="file" id="hassCam" accept="image/*" capture="environment" hidden multiple>
+      <input type="file" id="hassFile" accept="image/*" hidden multiple>
+      <div class="thumbs" id="hassThumbs"></div>
+    </fieldset>
+
+    <!-- KROK 5 — WNIOSKI -->
+    <fieldset class="step" data-step="5" hidden>
+      <h2 class="steptitle">Wnioski i zapis</h2>
+      <p class="stepsub">Klasyfikacja usterki, wykonane prace, zebrane części.</p>
+
+      <label class="f"><span>Rzeczywista usterka</span>
+        <textarea data-field="realDefect" placeholder="Co faktycznie stwierdzono"></textarea>
+      </label>
+
+      <div class="grid2">
+        <label class="f"><span>Rodzaj usterki</span>
+          <select data-field="inspType">
+            <option value="">—</option><option value="Technical">Techniczne</option><option value="NDF">Nie stwierdzono usterki (NDF)</option>
+          </select>
+        </label>
+        <label class="f"><span>Rodzaj czynności</span>
+          <select data-field="activityType">
+            <option value="">—</option><option>Regulacja</option><option>Wymiana części</option>
+            <option>Inspekcja</option><option>Zwrot</option>
+          </select>
+        </label>
+      </div>
+
+      <label class="f"><span>Kategoria</span>
+        <input type="text" data-field="category" list="dlCat" placeholder="wybierz lub wpisz własną">
+        <datalist id="dlCat">
+          <option>Hałas</option><option>Wyciek</option><option value="AutoDispense">Dozowanie (AutoDispense)</option><option>Fartuch</option>
+          <option>PBA</option><option value="Not Drain">Brak odpływu (Not Drain)</option><option value="Water Supply">Dopływ wody (Water Supply)</option><option value="Electrical">Elektryczne</option>
+          <option value="G.Function">G.Function (funkcja ogólna)</option>
+          <option value="Mechanical Damage">Uszkodzenie mechaniczne</option><option value="Spinning problem">Problem z wirowaniem</option>
+        </datalist>
+      </label>
+
+      <label class="f"><span>Czynności</span>
+        <textarea data-field="activity" id="activityInput" placeholder="1. …&#10;2. …"></textarea>
+      </label>
+      <button type="button" class="btn sm" id="composeBtn" style="margin:-4px 0 14px">Utwórz z ustaleń wizualnych i funkcjonalnych</button>
+
+      <div class="section-h">Zebrane części (maks. 4)</div>
+      <label class="f"><span>Część 1</span><input type="text" class="partline" placeholder="np. Pompa dozownika (2 gen)"></label>
+      <label class="f"><span>Część 2</span><input type="text" class="partline"></label>
+      <label class="f"><span>Część 3</span><input type="text" class="partline"></label>
+      <label class="f"><span>Część 4</span><input type="text" class="partline"></label>
+
+      <label class="f"><span>Uwagi</span><textarea data-field="remark"></textarea></label>
+
+      <div class="section-h">Podsumowanie</div>
+      <div class="kv" id="summary"></div>
+      <button type="button" class="btn primary block" id="saveBtn" style="margin-top:14px">Zapisz inspekcję</button>
+      <button type="button" class="btn danger block" id="discardBtn" style="margin-top:8px">Odrzuć szkic</button>
+    </fieldset>
+  </form>
+
+  <div class="formnav">
+    <button type="button" class="btn" id="prevBtn">Wstecz</button>
+    <button type="button" class="btn primary" id="nextBtn">Dalej</button>
+  </div>
+</section>
+
+<!-- ============ DETAIL ============ -->
+<section class="view wrap" id="viewDetail" hidden>
+  <div class="btnrow" style="margin-bottom:12px">
+    <button class="btn" id="backBtn">← Pulpit</button>
+    <button class="btn" id="printBtn">Drukuj PDF</button>
+    <button class="btn" id="editBtn">Edytuj</button>
+  </div>
+  <h2 class="steptitle" id="dTitle"></h2>
+  <p class="stepsub" id="dSub"></p>
+  <div class="kv" id="dKv"></div>
+  <div id="dPhotos"></div>
+  <button class="btn danger block" id="delBtn" style="margin-top:16px">Usuń inspekcję</button>
+</section>
+
+<!-- ============ EXPORT ============ -->
+<section class="view wrap" id="viewExport" hidden>
+  <h2 class="steptitle">Eksport i kopia zapasowa</h2>
+  <p class="stepsub">Wszystko działa offline — pliki zapisują się lokalnie w telefonie.</p>
+
+  <div class="card">
+    <h3>Raport Excel ze zdjęciami</h3>
+    <p class="meta">Zgodny z szablonem „Wizyta serwisowa (Ride Along) i inspekcja WH”: dane od kolumny B, scalone nagłówki sekcji, zdjęcia osadzone w kolumnie Main Pictures, produkty spoza SEPM w osobnym bloku. Przy eksporcie możesz podać własną nazwę pliku.</p>
+    <div class="cardactions">
+      <button class="btn primary" id="xlsxBtn">Excel ze zdjęciami</button>
+      <button class="btn" id="xlsxNoImg">Excel bez zdjęć</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Raport CSV</h3>
+    <p class="meta">Ten sam układ kolumn, UTF-8 z BOM. Excel w wersji kontynentalnej wymaga średnika.</p>
+    <div class="cardactions">
+      <button class="btn" id="csvSemi">CSV (średnik)</button>
+      <button class="btn" id="csvComma">CSV (przecinek)</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Kopia zapasowa JSON</h3>
+    <p class="meta">Pełna baza danych wraz ze zdjęciami — do przeniesienia danych na inny telefon.</p>
+    <div class="cardactions">
+      <button class="btn" id="jsonBtn">Eksport JSON</button>
+      <button class="btn" id="importBtn">Import JSON</button>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Projekty i nomenklatura modeli</h3>
+    <p class="meta">Rozszerz bazę projektów (PJT): litery projektu, listy serii, tabele dozowników. Importowany JSON uzupełnia wbudowane reguły (np. nowe serie lub kolejne projekty modeli).</p>
+    <div class="cardactions">
+      <button class="btn" id="pjtImportBtn">Dodaj projekty (JSON)</button>
+      <input type="file" id="pjtImportFile" accept="application/json,.json" hidden>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Test środowiska</h3>
+    <p class="meta" id="envInfo">—</p>
+  </div>
+
+  <div class="card">
+    <h3>Dane lokalne</h3>
+    <p class="meta" id="storageInfo">—</p>
+    <div class="cardactions"><button class="btn danger" id="wipeBtn">Wymaż całą bazę danych</button></div>
+  </div>
+</section>
+
+<nav class="tabbar" id="tabbar">
+  <button type="button" data-view="dash"><span class="ic">▦</span>Pulpit</button>
+  <button type="button" data-view="form"><span class="ic">＋</span>Nowa</button>
+  <button type="button" data-view="export"><span class="ic">↧</span>Eksport</button>
+</nav>
+
+<div id="plate">
+  <div class="plate-head">
+    <b>Odczyt tabliczki znamionowej</b>
+    <button type="button" class="icon-btn" id="plateClose" aria-label="Zamknij">✕</button>
+  </div>
+  <div class="plate-img" id="plateImgWrap"><img id="plateImg" alt="Zdjęcie tabliczki znamionowej"></div>
+  <div class="plate-zoom">
+    <span>Powiększenie</span>
+    <input type="range" id="plateZoom" min="100" max="400" value="100" step="10">
+  </div>
+  <div class="plate-form">
+    <label class="f"><span>Linia nad kodem — kod modelu</span>
+      <input type="text" id="plateModel" autocapitalize="characters" autocomplete="off" placeholder="WW11DB8B95GBU4">
+    </label>
+    <p class="auto" id="plateModelInfo"></p>
+    <label class="f"><span>Linia pod kodem — numer seryjny</span>
+      <input type="text" id="plateSerial" autocapitalize="characters" autocomplete="off" placeholder="08J25ESX500082X">
+    </label>
+    <p class="auto" id="plateSerialInfo"></p>
+    <label class="chk"><input type="checkbox" id="plateAttach" checked> Dołącz zdjęcie tabliczki do tej inspekcji</label>
+    <div class="btnrow" style="margin-top:12px">
+      <button type="button" class="btn" id="plateRetake" style="flex:1">Zrób zdjęcie ponownie</button>
+      <button type="button" class="btn primary" id="plateUse" style="flex:1">Użyj tych wartości</button>
+    </div>
+  </div>
+</div>
+
+<div id="scanner">
+  <p class="scanmsg" id="scanMsg">Uruchamianie aparatu…</p>
+  <video id="scanVideo" playsinline muted autoplay></video>
+  <div class="scanframe"></div>
+  <div class="scandiag" id="scanDiag"></div>
+  <div class="scanmanual">
+    <input type="text" id="scanManual" placeholder="Albo wpisz / wklej kod" autocapitalize="characters" autocomplete="off">
+    <button type="button" class="btn" id="scanManualOk">OK</button>
+  </div>
+  <div class="scanbar">
+    <button type="button" class="btn" id="scanFallback">Zdjęcie kodu</button>
+    <button type="button" class="btn" id="scanTorch" hidden>Latarka</button>
+    <button type="button" class="btn" id="scanClose">Zamknij</button>
+  </div>
+  <input type="file" id="scanFile" accept="image/*" capture="environment" hidden>
+</div>
+
+<div id="shareModal">
+  <div class="plate-head">
+    <b>Udostępnij zapisaną inspekcję</b>
+    <button type="button" class="icon-btn" id="shareClose" aria-label="Zamknij">✕</button>
+  </div>
+  <div class="share-body">
+    <p class="share-note" id="shareInfo"></p>
+    <button type="button" class="btn primary" id="shareXlsx">Udostępnij Excel (ze zdjęciami)</button>
+    <button type="button" class="btn" id="shareJsonBtn">Udostępnij plik JSON</button>
+    <a class="btn btn-a" id="shareMail" href="#">Napisz e-mail — m.mataj@samsung.com</a>
+    <a class="btn btn-a" id="shareWa" href="#" target="_blank" rel="noopener">WhatsApp — +48 797 025 481</a>
+    <a class="btn btn-a" id="shareSms" href="#">SMS / MMS — +48 797 025 481</a>
+    <p class="share-note">„Udostępnij" otwiera systemowe okno udostępniania — wybierz Gmail, WhatsApp, MMS lub inną aplikację, a plik zostanie dołączony automatycznie. Na komputerze plik zostanie pobrany.</p>
+  </div>
+</div>
+
+<div id="printarea"></div>
+
+<script>
+"use strict";
+
+/* =====================================================================
+   1. CONFIGURATION
+   ===================================================================== */
+const FIELDS = ["no","sales","type","visitDate","plant","productionMonth","productionYear",
+  "purchaseDate","requestDate","series","displayType","dispenserType","modelCode","serialNumber",
+  "customerSymptom","realDefect","inspType","category","activityType","activity","mainPictures",
+  "hass","cyclesCounter","errorCodeHistory","unitLocation","collectedParts","remark"];
+
+const EXTRA = ["pjt","visualNotes","functionalNotes","hassResult","returnType"];
+
+const XL_HEADERS = ["Nr","Sales","Rodzaj zgłoszenia","Data wizyty","Fabryka","Miesiąc produkcji","Rok produkcji",
+  "Data zakupu","Data zgłoszenia","PJT","Typ wyświetlacza","Typ dozownika","Kod modelu","Numer seryjny",
+  "Objaw zgłoszony przez klienta","Rzeczywista usterka","Rodzaj","Kategoria","Rodzaj czynności","Czynności","Zdjęcia główne",
+  "HASS","Licznik cykli","Historia kodów błędów","Lokalizacja urządzenia","Zebrane części","Uwagi"];
+
+const LABELS = {
+  no:"Nr", sales:"Sales", type:"Rodzaj zgłoszenia", visitDate:"Data wizyty", plant:"Fabryka",
+  productionMonth:"Miesiąc produkcji", productionYear:"Rok produkcji", purchaseDate:"Data zakupu",
+  requestDate:"Data zgłoszenia", series:"Seria (PJT)", displayType:"Wyświetlacz", dispenserType:"Dozownik",
+  modelCode:"Kod modelu", serialNumber:"Numer seryjny", customerSymptom:"Objaw zgłoszony przez klienta",
+  realDefect:"Rzeczywista usterka", inspType:"Rodzaj usterki", category:"Kategoria",
+  activityType:"Rodzaj czynności", activity:"Czynności", mainPictures:"Zdjęcia",
+  hass:"HASS", cyclesCounter:"Licznik cykli", errorCodeHistory:"Historia kodów błędów",
+  unitLocation:"Lokalizacja", collectedParts:"Zebrane części", remark:"Uwagi", returnType:"Rodzaj zwrotu"
+};
+
+const STEP_NAMES = ["Dokumenty klienta","Identyfikacja urządzenia","Inspekcja wizualna","Weryfikacja funkcjonalna (HASS)","Wnioski i zapis"];
+
+/* Production year — official table from the Serial Number and Check Digit Management Rules.
+   Letters repeat every 20 years, so we take the latest plausible year. */
+const YEAR_MARKS = ("M A B C D F G H J K N R T W X Y L P Q S Z B C D F G H J K M N R T W X Y L P Q S Z B C D F G H J K M N").split(" ");
+const YEAR_TABLE = (function(){
+  const t = {};
+  YEAR_MARKS.forEach((mark, i)=>{
+    const y = 1990 + i;
+    (t[mark] = t[mark] || []).push(y);
+  });
+  return t;
+})();
+function yearFromCode(c){
+  const list = YEAR_TABLE[c];
+  if(!list) return null;
+  const limit = new Date().getFullYear() + 1;
+  const ok = list.filter(y=> y <= limit);
+  return ok.length ? Math.max.apply(null, ok) : null;
+}
+const MONTH_MAP = {"1":1,"2":2,"3":3,"4":4,"5":5,"6":6,"7":7,"8":8,"9":9,A:10,B:11,C:12};
+const MONTH_PL = ["","Styczeń","Luty","Marzec","Kwiecień","Maj","Czerwiec","Lipiec","Sierpień","Wrzesień","Październik","Listopad","Grudzień"];
+
+/* S/N char 5 = product group (5 = washers/dryers), char 6 = production plant */
+const FAMILY_MAP = {"5":"W/M (pralka, suszarka, Air Dresser)","4":"Lodówki","8":"Odkurzacze","7":"K/S","G":"Zmywarki","P":"Klimatyzacja","A":"Robot"};
+const PLANT_MAP = {
+  A:"SSEC", B:"SEM", C:"SAMEX", D:"TSE", E:"SEPM", F:"SEV", G:"SSEG", H:"SEH", J:"SSDP",
+  K:"SSKMT", L:"SERK", M:"SDMA", N:"SEHC", P:"SIEL-C", Q:"SEDA-C", R:"SEIN", S:"SESK",
+  T:"TSEC", V:"TSTC", W:"SEMA", X:"SEDA-M", Y:"SAVINA", Z:"SIEL-N",
+  "1":"SESC", "2":"SEHZ", "3":"SEC", "5":"SEVT", "6":"SETK-P"
+};
+
+/* Dispenser type — digit in the model code, position depends on the project.
+   U-PJT: char 7, B-PJT: char 8, D-PJT and F-PJT: char 9.
+   C-PJT: zawsze dozownik manualny (bez odczytu cyfry). */
+const DISPENSER_RULES = {
+  "U-PJT":{pos:7, map:{"8":"Auto","5":"Manual","3":"Auto","0":"Manual"}},
+  "B-PJT":{pos:8, map:{"9":"Auto","8":"Auto","5":"Manual","4":"Auto","3":"Auto","0":"Manual"}},
+  "D-PJT":{pos:9, map:{"9":"Auto","8":"Auto","7":"Auto","3":"Manual","2":"Manual"}},
+  "F-PJT":{pos:9, map:{"9":"Auto","8":"Auto","3":"Manual","2":"Manual","0":"Manual"}},
+  "C-PJT":{always:"Manual"}
+};
+const DISP_EXC_KEY = "sesa_dispenser_exceptions";
+function dispExceptions(){
+  try{ return JSON.parse(localStorage.getItem(DISP_EXC_KEY) || "{}"); }catch(e){ return {}; }
+}
+function saveDispException(model, value){
+  const m = dispExceptions();
+  if(value) m[model] = value; else delete m[model];
+  localStorage.setItem(DISP_EXC_KEY, JSON.stringify(m));
+}
+
+/* 5th letter of the model → project; project → series (series letter suffix).
+   USER_PJT_RULES (localStorage) pozwala dograć własne projekty i serie wszystkich modeli. */
+const PJT_BY_LETTER = {B:"B-PJT", C:"C-PJT", D:"D-PJT", F:"F-PJT", T:"U-PJT"};
+const SERIES_BY_PJT = {
+  "D-PJT":["5000D","6000D","6400D","7000D","7400D","8000D","8400D"],
+  "F-PJT":["5000F","6000F","6400F","7400F","8400F"],
+  "U-PJT":["4000T","5000T","6000T"],
+  "B-PJT":["5000B","7000B","9000B"],
+  "C-PJT":["5000C"]
+};
+const PJT_RULES_KEY = "sesa_pjt_rules";
+let USER_PJT_RULES = {letters:{}, series:{}, dispenser:{}};
+try{ USER_PJT_RULES = Object.assign(USER_PJT_RULES, JSON.parse(localStorage.getItem(PJT_RULES_KEY) || "{}")); }catch(_){}
+function pjtForLetter(letter){
+  return USER_PJT_RULES.letters[letter] || PJT_BY_LETTER[letter] || null;
+}
+function seriesForPJT(pjt){
+  return USER_PJT_RULES.series[pjt] || SERIES_BY_PJT[pjt] || [];
+}
+/* LED only in these series, everything else Ux */
+const LED_SERIES = ["5000C","5000D","5000F"];
+
+const DRAFT_KEY = "sesa_qa_draft_v2";
+
+/* =====================================================================
+   2. UTILITIES
+   ===================================================================== */
+const $ = (s,r)=> (r||document).querySelector(s);
+const $$ = (s,r)=> Array.from((r||document).querySelectorAll(s));
+
+let toastTimer = null;
+function toast(msg){
+  const t = $("#toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> t.classList.remove("show"), 1800);
+}
+function esc(s){
+  return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function todayISO(){
+  const d = new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function nowStamp(){ return new Date().toLocaleString("pl-PL",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}); }
+function reportDate(){
+  const d = new Date();
+  return String(d.getDate()).padStart(2,"0")+"."+String(d.getMonth()+1).padStart(2,"0")+"."+d.getFullYear();
+}
+function download(blob, name){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 1500);
+}
+
+/* =====================================================================
+   3. DATABASE
+   ===================================================================== */
+let db = null;
+function openDB(){
+  return new Promise((resolve, reject)=>{
+    const req = indexedDB.open("sesa_qa_db", 2);
+    req.onupgradeneeded = e=>{
+      const d = e.target.result;
+      if(!d.objectStoreNames.contains("inspections")){
+        const st = d.createObjectStore("inspections", {keyPath:"id"});
+        st.createIndex("createdAt","createdAt",{unique:false});
+      }
+    };
+    req.onsuccess = e=>{ db = e.target.result; resolve(db); };
+    req.onerror = ()=> reject(req.error);
+  });
+}
+function tx(mode){ return db.transaction("inspections", mode).objectStore("inspections"); }
+const dbPut = rec=> new Promise((res,rej)=>{ const r = tx("readwrite").put(rec); r.onsuccess=()=>res(rec); r.onerror=()=>rej(r.error); });
+const dbAll = ()=> new Promise((res,rej)=>{ const r = tx("readonly").getAll(); r.onsuccess=()=>res(r.result||[]); r.onerror=()=>rej(r.error); });
+const dbGet = id=> new Promise((res,rej)=>{ const r = tx("readonly").get(id); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); });
+const dbDel = id=> new Promise((res,rej)=>{ const r = tx("readwrite").delete(id); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); });
+const dbClear = ()=> new Promise((res,rej)=>{ const r = tx("readwrite").clear(); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); });
+
+/* =====================================================================
+   4. BUSINESS LOGIC
+   ===================================================================== */
+function cleanSN(s){ return String(s||"").trim().toUpperCase().replace(/\s+/g,""); }
+
+/* Structure of the 15-character S/N per Samsung rules:
+   1-4 model code · 5 product group · 6 plant · 7 line · 8 year · 9 month · 10-14 sequence · 15 check digit */
+function decodeSerial(sn){
+  const s = cleanSN(sn);
+  if(s.length < 15) return {ok:false, reason:"Numer S/N musi mieć 15 znaków (podano "+s.length+")."};
+  const fam = s.charAt(4), pc = s.charAt(5), line = s.charAt(6);
+  const yc = s.charAt(7), mc = s.charAt(8);
+  const year = yearFromCode(yc), month = MONTH_MAP[mc];
+  if(!year) return {ok:false, reason:"Nieznany kod roku („"+yc+"” na pozycji 8)."};
+  if(!month) return {ok:false, reason:"Nieznany kod miesiąca („"+mc+"” na pozycji 9)."};
+
+  const isOem = /[0-9]/.test(pc) && "9874".indexOf(pc) !== -1;
+  const plant = isOem ? "" : (PLANT_MAP[pc] || "");
+
+  return {
+    ok:true, modelPart:s.slice(0,4), family:fam, familyName:FAMILY_MAP[fam] || "",
+    plantCode:pc, plant:plant, isOem:isOem, line:line,
+    year:year, month:month, productionMonth:month+"."+year, productionYear:String(year),
+    seq:s.slice(9,14), checkDigit:s.charAt(14)
+  };
+}
+
+function decodeModel(model){
+  const m = String(model||"").trim().toUpperCase().replace(/\s+/g,"");
+  if(m.length < 4) return {ok:false, reason:"Kod modelu zbyt krótki."};
+  const letter = m.charAt(4);
+  const pjt = m.length >= 5 ? pjtForLetter(letter) : null;
+  const family = m.slice(0,2);
+  if(m.length < 5) return {ok:false, reason:"Wstępny kod modelu z numeru seryjnego („"+m+"”) — uzupełnij pełny kod z tabliczki.", family:family, partial:true};
+  if(!pjt) return {ok:false, reason:"Litera „"+letter+"” (5. znak) nie pasuje do żadnego znanego projektu.", family:family};
+  return {ok:true, letter:letter, pjt:pjt, family:family, seriesList:(seriesForPJT(pjt)||[]).map(s=> family+s)};
+}
+
+/* Dispenser type from the model code (or from a stored exception) */
+function decodeDispenser(model, pjt){
+  const m = String(model||"").trim().toUpperCase().replace(/\s+/g,"");
+  const exc = dispExceptions();
+  if(exc[m]) return {ok:true, value:exc[m], source:"exception"};
+  const uDisp = USER_PJT_RULES.dispenser[pjt];
+  const rule = uDisp ? Object.assign({}, DISPENSER_RULES[pjt] || {}, uDisp) : DISPENSER_RULES[pjt];
+  if(!rule) return {ok:false, reason: pjt ? "Brak reguły dozownika dla "+pjt+" — wybierz ręcznie." : ""};
+  if(rule.always) return {ok:true, value:rule.always, source:"rule"};
+  if(m.length < rule.pos) return {ok:false, reason:"Kod modelu zbyt krótki, by odczytać znak "+rule.pos+"."};
+  const digit = m.charAt(rule.pos - 1);
+  const value = rule.map[digit];
+  if(!value) return {ok:false, reason:"Znak „"+digit+"” na pozycji "+rule.pos+" nie występuje w tabeli "+pjt+" — wybierz ręcznie.", digit:digit, pos:rule.pos};
+  return {ok:true, value:value, digit:digit, pos:rule.pos, source:"rule"};
+}
+
+function displayFor(series){
+  if(!series) return "";
+  const suffix = String(series).trim().toUpperCase().slice(2);
+  return LED_SERIES.indexOf(suffix) !== -1 ? "LED" : "Ux";
+}
+
+function buildErrorHistory(errs){
+  return [0,1,2,3,4].map(i=>{
+    const v = errs && errs[i] ? String(errs[i]).trim() : "";
+    return (i+1)+". "+(v || "---");
+  }).join("\n");
+}
+function buildParts(parts){
+  const list = (parts||[]).map(p=> String(p||"").trim()).filter(Boolean);
+  return list.length ? list.join("\n") : "-";
+}
+function composeActivity(){
+  const v = (draft.visualNotes||"").trim();
+  const f = (draft.functionalNotes||"").trim();
+  let out = "Zakres inspekcji:";
+  out += "\nWizualne: " + (v ? v.split("\n").join("\n           ") : "Brak uszkodzeń");
+  out += "\nFunkcjonalne: " + (f ? f.split("\n").join("\n               ") : "Nie dotyczy");
+  return out;
+}
+
+/* --- reactive updates --- */
+let seriesValue = "";
+function getSeries(){
+  const sel = $("#seriesInput");
+  return sel.value === "__other" ? $("#seriesCustom").value.trim().toUpperCase() : sel.value;
+}
+function renderSeriesOptions(){
+  const d = decodeModel($("#modelInput").value);
+  const list = d.ok ? d.seriesList : [];
+  const sel = $("#seriesInput");
+  sel.innerHTML = '<option value="">—</option>'+
+    list.map(s=> '<option>'+s+'</option>').join("")+
+    '<option value="__other">Inna — wpisz ręcznie</option>';
+
+  let v = seriesValue;
+  if(!v && list.length === 1) v = list[0];
+  if(v && list.indexOf(v) === -1){ sel.value = "__other"; $("#seriesCustom").value = v; }
+  else { sel.value = v || ""; $("#seriesCustom").value = ""; }
+  $("#seriesCustomWrap").hidden = sel.value !== "__other";
+  seriesValue = v || "";
+
+  const info = $("#seriesInfo");
+  if(!d.ok){ info.className = "auto"; info.textContent = ""; }
+  else if(list.length > 1){ info.className = "auto"; info.textContent = d.pjt+" → dostępne serie wg nomenklatury: "+list.length+"."; }
+  else if(list.length === 1){ info.className = "auto"; info.textContent = d.pjt+" → jedyna seria w nomenklaturze: "+list[0]+"."; }
+  else { info.className = "auto err"; info.textContent = "Brak listy serii dla "+d.pjt+" — wpisz ręcznie."; }
+  applyDisplay();
+}
+function applySerial(){
+  const out = $("#snDecoded");
+  const sn = $("#snInput").value;
+  if(!sn.trim()){ out.textContent = ""; out.className = "auto"; return; }
+  const d = decodeSerial(sn);
+  if(!d.ok){ out.className = "auto err"; out.textContent = d.reason; return; }
+  $("#prodMonth").value = d.productionMonth;
+  $("#prodYear").value = d.productionYear;
+
+  const bits = [];
+  if(d.plant){ $("#plantInput").value = d.plant; bits.push("fabryka "+d.plant+" (znak 6: „"+d.plantCode+"”)"); }
+  else if(d.isOem) bits.push("produkcja OEM (znak 6: „"+d.plantCode+"”) — wpisz fabrykę ręcznie");
+  else bits.push("nieznany kod fabryki „"+d.plantCode+"”");
+  bits.push("linia "+d.line);
+  bits.push("wyprodukowano: "+MONTH_PL[d.month]+" "+d.year);
+  bits.push("nr "+d.seq+", cyfra kontrolna "+d.checkDigit);
+  out.className = d.family === "5" ? "auto" : "auto err";
+  out.textContent = (d.family === "5" ? "" : "Uwaga: znak 5 („"+d.family+"”) nie jest grupą W/M. ")+bits.join(" · ");
+  /* Wykrywanie modelu z numeru seryjnego (#11): znaki 1-4 S/N to kod modelu */
+  if(d.family === "5" && !$("#modelInput").value.trim()){
+    $("#modelInput").value = d.modelPart;
+    applyModel();
+  }
+}
+function applyModel(){
+  const out = $("#modelDecoded");
+  const m = $("#modelInput").value;
+  if(!m.trim()){
+    out.textContent = ""; out.className = "auto";
+    $("#dispInfo").textContent = ""; renderSeriesOptions(); return;
+  }
+  const d = decodeModel(m);
+  if(!d.ok){
+    out.className = d.partial ? "auto" : "auto err";
+    out.textContent = d.reason;
+    $("#dispInfo").textContent = ""; renderSeriesOptions(); return;
+  }
+  $("#pjtInput").value = d.pjt;
+  renderSeriesOptions();
+  applyDispenser(d.pjt);
+  out.className = "auto";
+  out.textContent = "5. znak „"+d.letter+"” → "+d.pjt;
+}
+function applyDispenser(pjt){
+  const info = $("#dispInfo");
+  const model = $("#modelInput").value;
+  const d = decodeDispenser(model, pjt || $("#pjtInput").value);
+  const sel = $('[data-field="dispenserType"]');
+  if(d.ok){
+    sel.value = d.value;
+    info.className = "auto";
+    info.textContent = d.source === "exception"
+      ? "Zapisany wyjątek dla tego modelu: "+d.value
+      : "Znak "+d.pos+" kodu modelu („"+d.digit+"”) → dozownik "+d.value;
+  }else{
+    info.className = "auto err";
+    info.textContent = d.reason || "";
+  }
+}
+function applyDisplay(){
+  const s = getSeries();
+  const d = displayFor(s);
+  if(d) $("#displayInput").value = d;
+}
+function applyWarranty(){
+  const p = $('[data-field="purchaseDate"]').value;
+  const v = $('[data-field="requestDate"]').value;   /* gwarancja liczona od daty zgłoszenia (#12) */
+  const out = $("#warrantyInfo");
+  if(!p || !v){ out.textContent = ""; out.className = "auto"; return; }
+  const months = (new Date(v) - new Date(p)) / (1000*60*60*24*30.44);
+  if(isNaN(months)){ out.textContent = ""; return; }
+  const y = (months/12).toFixed(1);
+  if(months <= 24){ out.className = "auto"; out.textContent = "Wiek urządzenia od zakupu do daty zgłoszenia: "+y+" lat — w ramach standardowej gwarancji 24 miesięcy."; }
+  else { out.className = "auto err"; out.textContent = "Wiek urządzenia od zakupu do daty zgłoszenia: "+y+" lat — poza standardową gwarancją 24 miesięcy."; }
+}
+
+/* =====================================================================
+   5. IMAGE COMPRESSION
+   ===================================================================== */
+function compressImage(file, maxSide, quality){
+  maxSide = maxSide || 1024; quality = quality || 0.7;
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onerror = ()=> reject(new Error("Nie udało się odczytać pliku."));
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onerror = ()=> reject(new Error("Plik nie jest obrazem."));
+      img.onload = ()=>{
+        let w = img.naturalWidth, h = img.naturalHeight;
+        if(w > maxSide || h > maxSide){
+          const r = Math.min(maxSide/w, maxSide/h);
+          w = Math.round(w*r); h = Math.round(h*r);
+        }
+        const cv = document.createElement("canvas");
+        cv.width = w; cv.height = h;
+        const ctx = cv.getContext("2d");
+        ctx.fillStyle = "#fff"; ctx.fillRect(0,0,w,h);
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(cv.toDataURL("image/jpeg", quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/* =====================================================================
+   6. FORM STATE
+   ===================================================================== */
+let draft = blankDraft();
+let editingId = null;
+let currentStep = 1;
+let currentDetailId = null;
+
+function blankDraft(){
+  const d = {photosDefect:[], hassImages:[], errors:["","","","",""], parts:["","","",""]};
+  FIELDS.concat(EXTRA).forEach(f=> d[f] = "");
+  d.visitDate = todayISO();
+  return d;
+}
+function readForm(){
+  $$("[data-field]").forEach(el=>{ draft[el.dataset.field] = el.value; });
+  draft.errors = $$(".errcode").map(el=> el.value.trim());
+  draft.parts  = $$(".partline").map(el=> el.value.trim());
+  draft.series = getSeries();
+}
+function applyHassColor(){
+  const el = $("#hassInput");
+  if(!el) return;
+  el.classList.toggle("pass", el.value === "PASS");
+  el.classList.toggle("fail", el.value === "FAIL");
+}
+$("#hassInput").addEventListener("change", applyHassColor);
+function writeForm(){
+  $$("[data-field]").forEach(el=>{ el.value = draft[el.dataset.field] || ""; });
+  $$(".errcode").forEach((el,i)=> el.value = (draft.errors && draft.errors[i]) || "");
+  $$(".partline").forEach((el,i)=> el.value = (draft.parts && draft.parts[i]) || "");
+  seriesValue = draft.series || "";
+  renderThumbs(); applySerial(); applyModel(); applyWarranty(); applyHassColor();
+  if(typeof updateReturnType === "function") updateReturnType();
+}
+
+let saveTimer = null;
+function saveDraft(silent){
+  readForm();
+  try{
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(Object.assign({}, draft, {_editingId:editingId, _step:currentStep})));
+    if(!silent){
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(()=> toast("Zapisano szkic · "+new Date().toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit",second:"2-digit"})), 350);
+    }
+  }catch(e){ toast("Brak miejsca na szkic — zapisz inspekcję"); }
+}
+function loadDraftRaw(){
+  try{ const s = localStorage.getItem(DRAFT_KEY); return s ? JSON.parse(s) : null; }catch(e){ return null; }
+}
+function clearDraft(){ localStorage.removeItem(DRAFT_KEY); }
+
+/* =====================================================================
+   7. PHOTOS
+   ===================================================================== */
+function thumbsHTML(list, kind){
+  return list.map((src,i)=>
+    (String(src).indexOf("data:video") === 0
+      ? '<div class="thumb"><video src="'+src+'" controls muted playsinline></video>'
+      : '<div class="thumb"><img src="'+src+'" alt="Zdjęcie '+(i+1)+'">')+
+    '<button type="button" data-del="'+kind+'" data-i="'+i+'" aria-label="Usuń">✕</button></div>'
+  ).join("");
+}
+function renderThumbs(){
+  $("#defThumbs").innerHTML = thumbsHTML(draft.photosDefect, "photosDefect");
+  $("#hassThumbs").innerHTML = thumbsHTML(draft.hassImages, "hassImages");
+  const n = draft.photosDefect.length + draft.hassImages.length;
+  draft.mainPictures = n ? (n+" szt.") : "";
+}
+async function handleFiles(files, kind){
+  const arr = Array.from(files||[]);
+  if(!arr.length) return;
+  toast("Przetwarzanie "+arr.length+" plik(ów)…");
+  for(const f of arr){
+    try{
+      if(f.type && f.type.indexOf("video/") === 0){
+        /* wideo: bez kompresji, z limitem rozmiaru (baza IndexedDB w przeglądarce) */
+        if(f.size > 60*1024*1024){ toast("Plik „"+f.name+"” jest za duży (limit 60 MB) — pominięto."); continue; }
+        const url = await new Promise((res, rej)=>{
+          const rd = new FileReader();
+          rd.onerror = ()=> rej(new Error("Nie udało się odczytać nagrania."));
+          rd.onload = ()=> res(rd.result);
+          rd.readAsDataURL(f);
+        });
+        draft[kind].push(url);
+      }
+      else{ draft[kind].push(await compressImage(f, 1024, 0.7)); }
+    }
+    catch(e){ toast(e.message); }
+  }
+  renderThumbs(); saveDraft(true);
+  toast("Dodano pliki ("+arr.length+")");
+}
+document.addEventListener("click", e=>{
+  const b = e.target.closest("[data-del]");
+  if(!b) return;
+  draft[b.dataset.del].splice(Number(b.dataset.i), 1);
+  renderThumbs(); saveDraft(true);
+});
+
+/* =====================================================================
+   8. SCANNER (QR + barcodes)
+   ===================================================================== */
+let scanStream = null, scanTarget = null, scanRAF = null, detector = null;
+
+function envReport(){
+  return {
+    isFile: location.protocol === "file:",
+    secure: window.isSecureContext === true,
+    hasGUM: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
+    hasBD: ("BarcodeDetector" in window),
+    ios: /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1),
+    origin: location.origin || location.href
+  };
+}
+function diagHTML(reason, env){
+  if(env.isFile || !env.secure){
+    return "<b>Aparat zablokowany: strona nie jest serwowana po HTTPS</b>"+
+      "Przeglądarki udostępniają aparat tylko w bezpiecznym kontekście. Plik otwarty z pamięci telefonu "+
+      "(<code>file://</code>) nie jest takim kontekstem, więc <code>getUserMedia</code> w ogóle nie istnieje."+
+      "<ol><li>Umieść plik na hostingu HTTPS i otwórz adres <code>https://…</code>.</li>"+
+      "<li>Dodaj stronę do ekranu głównego — nadal działa offline, a skaner zostaje odblokowany.</li></ol>"+
+      "Do tego czasu użyj zdjęcia tabliczki znamionowej lub wpisz dane ręcznie.";
+  }
+  if(env.ios || !env.hasBD){
+    return "<b>Ta przeglądarka nie ma wbudowanego czytnika kodów</b>"+
+      "Wykrywanie kodów istnieje obecnie tylko w Chrome/Edge na Androidzie. Safari i wszystkie przeglądarki na iOS go nie mają."+
+      "<ol><li>Na Androidzie otwórz aplikację w Chrome.</li>"+
+      "<li>Na iPhonie zrób zdjęcie tabliczki i wpisz obie linie — dekoder S/N uzupełni resztę.</li></ol>";
+  }
+  return "<b>Aparat niedostępny</b>"+esc(reason||"")+
+    "<ol><li>Sprawdź zgodę na aparat (kłódka obok adresu).</li>"+
+    "<li>Zamknij inne aplikacje korzystające z aparatu.</li><li>Odśwież stronę.</li></ol>";
+}
+function showDiag(reason){
+  const d = $("#scanDiag");
+  d.innerHTML = diagHTML(reason, envReport());
+  d.classList.add("on");
+  $("#scanner").classList.add("nocam");
+}
+
+async function openScanner(field){
+  scanTarget = field;
+  const box = $("#scanner");
+  box.classList.remove("nocam");
+  $("#scanDiag").classList.remove("on");
+  $("#scanManual").value = "";
+  box.classList.add("on");
+  const msg = $("#scanMsg");
+  const env = envReport();
+
+  msg.textContent = field === "both" ? "Zeskanuj kod QR z tabliczki" : "Skieruj aparat na kod";
+
+  if(!env.hasGUM || !env.secure){ msg.textContent = "Podgląd z aparatu niedostępny"; showDiag("Brak getUserMedia."); return; }
+  if(!env.hasBD){ msg.textContent = "Brak czytnika kodów w tej przeglądarce"; showDiag("BarcodeDetector niedostępny."); return; }
+
+  try{
+    if(!detector){
+      let formats = ["qr_code","data_matrix","code_128","code_39","code_93","itf","codabar","ean_13","ean_8","upc_a","upc_e","pdf417","aztec"];
+      try{
+        const sup = await window.BarcodeDetector.getSupportedFormats();
+        const f = formats.filter(x=> sup.indexOf(x) !== -1);
+        formats = f.length ? f : sup;
+      }catch(_){}
+      detector = new window.BarcodeDetector({formats: formats});
+    }
+    scanStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}, width:{ideal:1920}, height:{ideal:1080}}});
+    const v = $("#scanVideo");
+    v.srcObject = scanStream; v.setAttribute("playsinline","");
+    await v.play();
+    setupTorch();
+    loopScan();
+  }catch(err){
+    const name = err && err.name ? err.name : "";
+    let why = "Aparat zwrócił błąd: "+name;
+    if(name === "NotAllowedError") why = "Odmówiono dostępu do aparatu.";
+    if(name === "NotFoundError") why = "Nie znaleziono aparatu.";
+    if(name === "NotReadableError") why = "Aparat jest zajęty przez inną aplikację.";
+    msg.textContent = "Nie udało się uruchomić aparatu";
+    showDiag(why);
+  }
+}
+function setupTorch(){
+  const btn = $("#scanTorch");
+  btn.hidden = true;
+  try{
+    const track = scanStream.getVideoTracks()[0];
+    const caps = track.getCapabilities ? track.getCapabilities() : {};
+    if(caps && "torch" in caps){
+      btn.hidden = false;
+      let on = false;
+      btn.onclick = ()=>{ on = !on; track.applyConstraints({advanced:[{torch:on}]}).catch(()=>{}); btn.textContent = on ? "Latarka wł." : "Latarka"; };
+    }
+  }catch(_){}
+}
+function loopScan(){
+  const v = $("#scanVideo");
+  const step = async ()=>{
+    if(!scanStream) return;
+    try{
+      const codes = await detector.detect(v);
+      if(codes && codes.length){ finishScan(codes.map(c=> c.rawValue).join("\n")); return; }
+    }catch(_){}
+    scanRAF = requestAnimationFrame(step);
+  };
+  scanRAF = requestAnimationFrame(step);
+}
+
+/* Parsing the scanned payload.
+   SmartThings labels encode an address of the form
+   https://qr.samsungiots.com/?r=<S/N>&mc=<kod modelu>
+   — so URL parameters first, then text formats, then bare strings. */
+const QR_SERIAL_KEYS = ["r","sn","s","serial","ser","serialno","serialnumber"];
+const QR_MODEL_KEYS  = ["mc","m","model","modelcode","mdl"];
+
+function parseQueryPairs(raw){
+  const out = {};
+  const q = raw.indexOf("?");
+  const body = q === -1 ? raw : raw.slice(q+1);
+  if(body.indexOf("=") === -1) return out;
+  body.split(/[&;]/).forEach(pair=>{
+    const i = pair.indexOf("=");
+    if(i <= 0) return;
+    const k = pair.slice(0,i).trim().toLowerCase().replace(/[^a-z0-9]/g,"");
+    let v = pair.slice(i+1).trim();
+    try{ v = decodeURIComponent(v); }catch(_){}
+    if(k && v) out[k] = v.toUpperCase();
+  });
+  return out;
+}
+
+function parseScan(text){
+  const raw = String(text||"").trim();
+  const up = raw.toUpperCase();
+  let model = "", serial = "";
+
+  /* 1. URL with parameters (SmartThings label) */
+  const params = parseQueryPairs(raw);
+  QR_SERIAL_KEYS.forEach(k=>{ if(!serial && params[k]) serial = params[k].replace(/[^A-Z0-9]/g,""); });
+  QR_MODEL_KEYS.forEach(k=>{ if(!model && params[k]) model = params[k].replace(/[^A-Z0-9\/\-]/g,""); });
+  if(model || serial) return {model:model, serial:serial};
+
+  /* 2. key:value pairs in plain text */
+  const tokens = up.split(/[\s;,|\n\r\t]+/).map(t=> t.trim()).filter(Boolean);
+  tokens.forEach(t=>{
+    const kv = t.match(/^(?:M|MODEL|MDL|MC)[:=](.+)$/);
+    const ks = t.match(/^(?:S|SN|SER|SERIAL|R)[:=](.+)$/);
+    if(kv && !model) model = kv[1];
+    if(ks && !serial) serial = ks[1];
+  });
+
+  /* 3. recognition by token shape */
+  tokens.forEach(t=>{
+    const c = t.replace(/[^A-Z0-9\/\-]/g,"");
+    if(!serial && c.length >= 15 && /^[A-Z0-9]+$/.test(c) && decodeSerial(c).ok) serial = c;
+    if(!model && /^W[WDFHT][A-Z0-9]{6,}/.test(c)) model = c;
+  });
+
+  /* 4. a single bare string */
+  if(!model && !serial){
+    const c = up.replace(/[^A-Z0-9\/\-]/g,"");
+    if(decodeSerial(c).ok) serial = c; else model = c;
+  }
+  return {model:model, serial:serial};
+}
+
+function finishScan(value){
+  const p = parseScan(value);
+  let done = [];
+
+  /* The plate QR carries both fields — fill them regardless of which button was used */
+  if(p.serial && (scanTarget !== "modelCode" || !$("#snInput").value.trim())){
+    $("#snInput").value = p.serial; done.push("S/N");
+  }
+  if(p.model && (scanTarget !== "serialNumber" || !$("#modelInput").value.trim())){
+    $("#modelInput").value = p.model; done.push("model");
+  }
+  if(!done.length){
+    if(scanTarget === "serialNumber"){ $("#snInput").value = cleanSN(value); done.push("S/N"); }
+    else if(scanTarget === "modelCode"){ $("#modelInput").value = cleanSN(value); done.push("model"); }
+    else { $("#scanMsg").textContent = "Kod odczytany, ale nie rozpoznano w nim modelu ani numeru S/N."; $("#scanManual").value = cleanSN(value); return; }
+  }
+  closeScanner();
+  applySerial(); applyModel(); saveDraft(true);
+  toast("Wczytano: "+done.join(" i "));
+}
+function closeScanner(){
+  if(scanRAF) cancelAnimationFrame(scanRAF);
+  scanRAF = null;
+  if(scanStream){ scanStream.getTracks().forEach(t=> t.stop()); scanStream = null; }
+  $("#scanVideo").srcObject = null;
+  $("#scanTorch").hidden = true;
+  $("#scanDiag").classList.remove("on");
+  $("#scanner").classList.remove("on","nocam");
+}
+$("#scanClose").addEventListener("click", closeScanner);
+$("#scanFallback").addEventListener("click", ()=> $("#scanFile").click());
+function submitManual(){
+  const v = $("#scanManual").value.trim();
+  if(!v){ toast("Wpisz kod"); return; }
+  finishScan(v);
+}
+$("#scanManualOk").addEventListener("click", submitManual);
+$("#scanManual").addEventListener("keydown", e=>{ if(e.key === "Enter"){ e.preventDefault(); submitManual(); } });
+
+$("#scanFile").addEventListener("change", async e=>{
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  if(!f) return;
+  const msg = $("#scanMsg");
+  if(!("BarcodeDetector" in window)){
+    msg.textContent = "Zrobiono zdjęcie, ale ta przeglądarka nie potrafi odczytać kodu — wpisz wartości poniżej.";
+    showDiag(""); $("#scanManual").focus(); return;
+  }
+  try{
+    if(!detector) detector = new window.BarcodeDetector();
+    const bmp = await createImageBitmap(f);
+    const codes = await detector.detect(bmp);
+    if(codes && codes.length) finishScan(codes.map(c=> c.rawValue).join("\n"));
+    else msg.textContent = "Nie znaleziono kodu na zdjęciu. Spróbuj bliżej, w lepszym świetle.";
+  }catch(err){
+    msg.textContent = "Nie udało się odczytać kodu — wpisz wartości ręcznie.";
+  }
+});
+$$("[data-scan]").forEach(b=> b.addEventListener("click", ()=> openScanner(b.dataset.scan)));
+
+/* =====================================================================
+   8b. READING THE RATING PLATE FROM A PHOTO
+   ===================================================================== */
+let plateDataURL = "";
+
+$("#plateBtn").addEventListener("click", ()=> $("#plateFile").click());
+$("#plateRetake").addEventListener("click", ()=> $("#plateFile").click());
+$("#plateClose").addEventListener("click", ()=> $("#plate").classList.remove("on"));
+
+$("#plateFile").addEventListener("change", async e=>{
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  if(!f) return;
+  toast("Przygotowanie zdjęcia…");
+  try{
+    plateDataURL = await compressImage(f, 1600, 0.85);
+  }catch(err){ toast(err.message); return; }
+
+  $("#plateImg").src = plateDataURL;
+  $("#plateZoom").value = 100;
+  $("#plateImg").style.transform = "scale(1)";
+  $("#plateModel").value = "";
+  $("#plateSerial").value = "";
+  $("#plateModelInfo").textContent = "";
+  $("#plateSerialInfo").textContent = "";
+  $("#plate").classList.add("on");
+  autoReadPlate();
+});
+
+$("#plateZoom").addEventListener("input", e=>{
+  const z = Number(e.target.value)/100;
+  $("#plateImg").style.transform = "scale("+z+")";
+  $("#plateImg").style.width = (100*z > 100 ? "100%" : "100%");
+});
+
+/* Automatic reading attempt: the code first (where the browser supports it),
+   then text detection. If neither works, the user types the two lines. */
+async function autoReadPlate(){
+  const img = $("#plateImg");
+  if(!img.complete) await new Promise(r=> img.onload = r);
+
+  if("BarcodeDetector" in window){
+    try{
+      const bd = new window.BarcodeDetector();
+      const codes = await bd.detect(img);
+      if(codes && codes.length){
+        const p = parseScan(codes.map(c=> c.rawValue).join("\n"));
+        if(p.model) $("#plateModel").value = p.model;
+        if(p.serial) $("#plateSerial").value = p.serial;
+        if(p.model || p.serial){ validatePlate(); toast("Odczytano z kodu — sprawdź i zatwierdź"); return; }
+      }
+    }catch(_){}
+  }
+
+  if("TextDetector" in window){
+    try{
+      const td = new window.TextDetector();
+      const blocks = await td.detect(img);
+      const lines = [];
+      (blocks||[]).forEach(b=>{
+        const txt = (b.rawValue || "").trim();
+        if(txt) lines.push({y:(b.boundingBox && b.boundingBox.top) || 0, t:txt.toUpperCase().replace(/\s+/g,"")});
+      });
+      lines.sort((a,b)=> a.y - b.y);
+      let model = "", serial = "";
+      lines.forEach(l=>{
+        const c = l.t.replace(/[^A-Z0-9\/\-]/g,"");
+        if(!model && /^W[WDFHT][A-Z0-9]{6,}$/.test(c)) model = c;
+        if(!serial && c.length >= 14 && /^[A-Z0-9]+$/.test(c) && decodeSerial(c).ok) serial = c;
+      });
+      if(!model && lines.length) model = lines[0].t.replace(/[^A-Z0-9\/\-]/g,"");
+      if(!serial && lines.length > 1) serial = lines[lines.length-1].t.replace(/[^A-Z0-9]/g,"");
+      if(model) $("#plateModel").value = model;
+      if(serial) $("#plateSerial").value = serial;
+      if(model || serial){ validatePlate(); toast("Wstępny odczyt — zweryfikuj znak po znaku"); return; }
+    }catch(_){}
+  }
+
+  $("#plateModelInfo").className = "auto";
+  $("#plateModelInfo").textContent = "Wpisz obie linie ze zdjęcia — powiększenie ułatwia odczyt drobnego druku.";
+  $("#plateModel").focus();
+}
+
+function validatePlate(){
+  const m = $("#plateModel").value.trim().toUpperCase();
+  const s = $("#plateSerial").value.trim().toUpperCase();
+  const mi = $("#plateModelInfo"), si = $("#plateSerialInfo");
+
+  if(!m){ mi.textContent = ""; }
+  else{
+    const d = decodeModel(m);
+    if(d.ok){
+      const disp = decodeDispenser(m, d.pjt);
+      mi.className = "auto";
+      mi.textContent = d.pjt + (disp.ok ? " · dispenser "+disp.value : "");
+    }else{ mi.className = "auto err"; mi.textContent = d.reason; }
+  }
+
+  if(!s){ si.textContent = ""; }
+  else{
+    const d = decodeSerial(s);
+    if(d.ok){
+      si.className = "auto";
+      si.textContent = (d.plant ? d.plant+" · " : (d.isOem ? "OEM · " : ""))+"wyprodukowano: "+MONTH_PL[d.month]+" "+d.year+" · cyfra kontrolna "+d.checkDigit;
+    }else{ si.className = "auto err"; si.textContent = d.reason; }
+  }
+}
+$("#plateModel").addEventListener("input", validatePlate);
+$("#plateSerial").addEventListener("input", validatePlate);
+
+$("#plateUse").addEventListener("click", ()=>{
+  const m = $("#plateModel").value.trim().toUpperCase();
+  const s = $("#plateSerial").value.trim().toUpperCase();
+  if(!m && !s){ toast("Wypełnij przynajmniej jedno pole"); return; }
+  if(m) $("#modelInput").value = m;
+  if(s) $("#snInput").value = s;
+  if($("#plateAttach").checked && plateDataURL){
+    draft.hassImages.push(plateDataURL);
+    renderThumbs();
+  }
+  $("#plate").classList.remove("on");
+  applySerial(); applyModel(); saveDraft(true);
+  toast("Wczytano dane z tabliczki znamionowej");
+});
+function showView(name){
+  $("#viewDash").hidden = name !== "dash";
+  $("#viewForm").hidden = name !== "form";
+  $("#viewExport").hidden = name !== "export";
+  $("#viewDetail").hidden = name !== "detail";
+  $(".formnav").style.display = (name === "form") ? "flex" : "none";
+  $("#tabbar").style.display = (name === "form") ? "none" : "flex";
+  $$("#tabbar button").forEach(b=> b.setAttribute("aria-current", String(b.dataset.view === name)));
+  window.scrollTo(0,0);
+}
+function goStep(n){
+  currentStep = Math.min(5, Math.max(1, n));
+  $$("fieldset.step").forEach(fs=> fs.hidden = Number(fs.dataset.step) !== currentStep);
+  $$("#stepper button").forEach(b=>{
+    const s = Number(b.dataset.step);
+    b.setAttribute("aria-current", String(s === currentStep));
+    b.classList.toggle("done", s < currentStep);
+  });
+  $("#stepLabel").textContent = "Krok "+currentStep+" z 5 — "+STEP_NAMES[currentStep-1];
+  $("#prevBtn").textContent = currentStep === 1 ? "Pulpit" : "Wstecz";
+  $("#nextBtn").textContent = currentStep === 5 ? "Zapisz" : "Dalej";
+  if(currentStep === 5){
+    readForm();
+    /* #1: Activity aktualizuje się z ustaleń wizualnych/funkcjonalnych przy każdym wejściu
+       na krok 5, dopóki użytkownik nie nadpisze go ręcznie */
+    const act = $("#activityInput");
+    if(!act.value.trim() || draft._activityAuto) act.value = composeActivity();
+    renderSummary();
+  }
+  window.scrollTo(0,0);
+}
+$$("#stepper button").forEach(b=> b.addEventListener("click", ()=>{ readForm(); goStep(Number(b.dataset.step)); }));
+$("#prevBtn").addEventListener("click", ()=>{
+  readForm(); saveDraft(true);
+  if(currentStep === 1){ showView("dash"); refreshDash(); } else goStep(currentStep-1);
+});
+$("#nextBtn").addEventListener("click", ()=>{
+  readForm(); saveDraft(true);
+  if(currentStep === 5) saveInspection(); else goStep(currentStep+1);
+});
+$$("#tabbar button").forEach(b=> b.addEventListener("click", ()=>{
+  const v = b.dataset.view;
+  if(v === "form") startForm();
+  else { showView(v); if(v === "dash") refreshDash(); if(v === "export") updateStorageInfo(); }
+}));
+
+/* =====================================================================
+   10. FORM
+   ===================================================================== */
+function startForm(){
+  const saved = loadDraftRaw();
+  const hasData = saved && FIELDS.some(f=> saved[f] && f !== "visitDate");
+  if(hasData){
+    if(confirm("Znaleziono niezapisany szkic (S/N: "+(saved.serialNumber||"brak")+").\n\nPrzywrócić go?")){
+      draft = Object.assign(blankDraft(), saved);
+      draft.photosDefect = saved.photosDefect || [];
+      draft.hassImages   = saved.hassImages || [];
+      draft.errors = saved.errors || ["","","","",""];
+      draft.parts  = saved.parts  || ["","","",""];
+      editingId = saved._editingId || null;
+      showView("form"); writeForm(); goStep(saved._step || 1);
+      toast("Przywrócono szkic");
+      return;
+    }
+    clearDraft();
+  }
+  draft = blankDraft(); editingId = null;
+  nextNumber().then(n=>{ draft.no = String(n); $('[data-field="no"]').value = draft.no; });
+  showView("form"); writeForm(); goStep(1);
+}
+async function nextNumber(){
+  const all = await dbAll();
+  let max = 0;
+  all.forEach(r=>{ const n = parseInt(r.no,10); if(!isNaN(n) && n > max) max = n; });
+  return max + 1;
+}
+function renderSummary(){
+  const rows = [
+    ["Rodzaj zgłoszenia", draft.type],
+    (draft.type === "Inspekcja zwrotna" ? ["Rodzaj zwrotu", draft.returnType] : null),
+    ["Model / S/N", (draft.modelCode||"—")+"  /  "+(draft.serialNumber||"—")],
+    ["Fabryka · PJT · Seria", [draft.plant, draft.pjt, draft.series].filter(Boolean).join(" · ")],
+    ["Produkcja", draft.productionMonth],
+    ["Wyświetlacz / dozownik", [draft.displayType, draft.dispenserType].filter(Boolean).join(" / ")],
+    ["Rzeczywista usterka", draft.realDefect],
+    ["Klasyfikacja", [draft.inspType === "Technical" ? "Techniczne" : (draft.inspType === "NDF" ? "Nie stwierdzono usterki (NDF)" : draft.inspType), draft.category, draft.activityType].filter(Boolean).join(" · ")],
+    ["HASS", [draft.hassResult, draft.cyclesCounter ? draft.cyclesCounter+" cykli" : ""].filter(Boolean).join(" · ")],
+    ["Kody błędów", buildErrorHistory(draft.errors)],
+    ["Części", buildParts(draft.parts)],
+    ["Zdjęcia", (draft.photosDefect.length + draft.hassImages.length)+" szt."]
+  ].filter(Boolean);
+  $("#summary").innerHTML = rows.map(r=> "<div>"+esc(r[0])+"</div><div>"+esc(r[1]||"—")+"</div>").join("");
+}
+async function saveInspection(){
+  readForm();
+  /* #9: zapis/edycja możliwy bez numeru seryjnego — tylko potwierdzenie */
+  if(!draft.serialNumber.trim() && !draft.modelCode.trim()){
+    if(!confirm("Brak numeru seryjnego i kodu modelu.\n\nZapisać inspekcję bez identyfikacji urządzenia?")) return;
+  }
+  const rec = {};
+  FIELDS.concat(EXTRA).forEach(f=> rec[f] = (draft[f]||"").toString().trim());
+  rec.serialNumber = cleanSN(rec.serialNumber);
+  rec.modelCode = rec.modelCode.toUpperCase();
+  rec.errorCodeHistory = buildErrorHistory(draft.errors);
+  rec.collectedParts = buildParts(draft.parts);
+  rec.errors = draft.errors.slice();
+  rec.parts = draft.parts.slice();
+  rec.photosDefect = draft.photosDefect.slice();
+  rec.hassImages = draft.hassImages.slice();
+  rec.mainPictures = (rec.photosDefect.length + rec.hassImages.length) ? (rec.photosDefect.length + rec.hassImages.length)+" szt." : "";
+  if(!rec.activity || draft._activityAuto) rec.activity = composeActivity();
+  rec._activityAuto = draft._activityAuto === true;
+  rec.id = editingId || ("INS-"+Date.now().toString(36).toUpperCase()+"-"+Math.floor(Math.random()*900+100));
+  const old = editingId ? await dbGet(editingId) : null;
+  rec.createdAt = old && old.createdAt ? old.createdAt : Date.now();
+  rec.updatedAt = Date.now();
+
+  try{
+    await dbPut(rec);
+    clearDraft(); draft = blankDraft(); editingId = null;
+    toast("Zapisano inspekcję");
+    await refreshDash(); showView("dash");
+    openShare(rec);
+  }catch(e){ alert("Nie udało się zapisać: "+(e && e.message ? e.message : e)); }
+}
+$("#saveBtn").addEventListener("click", saveInspection);
+$("#discardBtn").addEventListener("click", ()=>{
+  if(!confirm("Odrzucić szkic? Niezapisane dane i zdjęcia zostaną utracone.")) return;
+  clearDraft(); draft = blankDraft(); editingId = null;
+  writeForm(); showView("dash"); refreshDash();
+  toast("Odrzucono szkic");
+});
+$("#composeBtn").addEventListener("click", ()=>{
+  readForm();
+  $("#activityInput").value = composeActivity();
+  draft._activityAuto = true;
+  saveDraft(true);
+  toast("Utworzono czynności z ustaleń");
+});
+
+/* #1: ręczna edycja pola Czynności wyłącza automatyczną aktualizację */
+$("#activityInput").addEventListener("input", ()=>{ draft._activityAuto = false; });
+
+/* #10: pole „Rodzaj zwrotu" widoczne przy Inspekcji zwrotnej */
+function updateReturnType(){
+  $("#returnTypeWrap").hidden = $("#typeInput").value !== "Inspekcja zwrotna";
+}
+$("#typeInput").addEventListener("change", updateReturnType);
+
+$("#form").addEventListener("input", ()=> saveDraft(false));
+$("#form").addEventListener("change", ()=> saveDraft(false));
+$("#snInput").addEventListener("input", applySerial);
+$("#modelInput").addEventListener("input", applyModel);
+$("#seriesInput").addEventListener("change", ()=>{
+  seriesValue = getSeries();
+  $("#seriesCustomWrap").hidden = $("#seriesInput").value !== "__other";
+  if($("#seriesInput").value === "__other") $("#seriesCustom").focus();
+  applyDisplay();
+});
+$("#seriesCustom").addEventListener("input", ()=>{ seriesValue = getSeries(); applyDisplay(); });
+$("#dispExcBtn").addEventListener("click", ()=>{
+  const model = $("#modelInput").value.trim().toUpperCase();
+  const val = $('[data-field="dispenserType"]').value;
+  if(!model){ toast("Najpierw wpisz kod modelu"); return; }
+  if(!val){ toast("Wybierz typ dozownika"); return; }
+  saveDispException(model, val);
+  $("#dispExcInfo").textContent = "Zapisano: "+model+" → dozownik "+val+". Reguła z kodu modelu nie nadpisze już tego wyboru.";
+  applyDispenser();
+  toast("Zapisano wyjątek");
+});
+$("#modelInput").addEventListener("blur", ()=> applyDispenser());
+$('[data-field="purchaseDate"]').addEventListener("change", applyWarranty);
+$('[data-field="requestDate"]').addEventListener("change", applyWarranty);
+$('[data-field="visitDate"]').addEventListener("change", applyWarranty);
+
+function bindPicker(btnId, inputId, kind){
+  $("#"+btnId).addEventListener("click", ()=> $("#"+inputId).click());
+  $("#"+inputId).addEventListener("change", async e=>{ await handleFiles(e.target.files, kind); e.target.value = ""; });
+}
+bindPicker("defShot","defCam","photosDefect");
+bindPicker("defPick","defFile","photosDefect");
+bindPicker("hassShot","hassCam","hassImages");
+bindPicker("hassPick","hassFile","hassImages");
+
+/* =====================================================================
+   11. DASHBOARD
+   ===================================================================== */
+let cache = [];
+async function refreshDash(){
+  cache = await dbAll();
+  cache.sort((a,b)=> (b.createdAt||0) - (a.createdAt||0));
+  const now = new Date();
+  const ym = now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0");
+  let photos = 0, tech = 0, ndf = 0, thisMonth = 0;
+  cache.forEach(r=>{
+    photos += (r.photosDefect||[]).length + (r.hassImages||[]).length;
+    if(r.inspType === "Technical") tech++;
+    if(r.inspType === "NDF") ndf++;
+    const d = new Date(r.createdAt||0);
+    if(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0") === ym) thisMonth++;
+  });
+  $("#stTotal").textContent = cache.length;
+  $("#stMonth").textContent = thisMonth;
+  $("#stTech").textContent = tech;
+  $("#stNdf").textContent = ndf;
+  $("#stPhotos").textContent = photos;
+  renderList();
+}
+function renderList(){
+  const q = $("#search").value.trim().toLowerCase();
+  const rows = q ? cache.filter(r=>
+    [r.serialNumber,r.modelCode,r.series,r.realDefect,r.customerSymptom,r.unitLocation,r.errorCodeHistory,r.plant,r.no,r.category]
+      .some(v=> String(v||"").toLowerCase().includes(q))
+  ) : cache;
+
+  const box = $("#list");
+  if(!rows.length){
+    box.innerHTML = cache.length
+      ? '<div class="empty"><b>Brak wyników</b>Spróbuj innego wyszukiwanego hasła.</div>'
+      : '<div class="empty"><b>Nic tu jeszcze nie ma</b>Dotknij „Nowa”, aby zapisać pierwszą inspekcję.</div>';
+    return;
+  }
+  box.innerHTML = rows.map(r=>{
+    const errs = (r.errorCodeHistory||"").split("\n").map(l=> l.replace(/^\d+\.\s*/,"")).filter(v=> v && v !== "---");
+    const pc = (r.photosDefect||[]).length + (r.hassImages||[]).length;
+    return '<article class="card">'+
+      '<h3>'+esc(r.modelCode || "Model nie wpisany")+'</h3>'+
+      '<p class="meta">S/N '+esc(r.serialNumber||"—")+' · nr '+esc(r.no||"—")+' · '+new Date(r.createdAt).toLocaleDateString("pl-PL")+'</p>'+
+      '<p class="meta">'+esc((r.realDefect || r.customerSymptom || "Brak opisu usterki").slice(0,110))+'</p>'+
+      '<div class="tags">'+
+        (r.type ? '<span class="tag">'+esc(r.type)+'</span>' : '')+
+        (r.series ? '<span class="tag">'+esc(r.series)+'</span>' : '')+
+        (r.plant ? '<span class="tag">'+esc(r.plant)+'</span>' : '')+
+        (r.inspType ? '<span class="tag '+(r.inspType === "Technical" ? "bad" : "ok")+'">'+esc(r.inspType === "Technical" ? "Techniczne" : "NDF")+'</span>' : '')+
+        (errs.length ? '<span class="tag bad">'+esc(errs.join(", "))+'</span>' : '')+
+        (pc ? '<span class="tag">'+pc+' plik(ów)</span>' : '')+
+      '</div>'+
+      '<div class="cardactions">'+
+        '<button class="btn sm" data-open="'+r.id+'">Szczegóły</button>'+
+        '<button class="btn sm" data-print="'+r.id+'">Drukuj PDF</button>'+
+        '<button class="btn sm" data-edit="'+r.id+'">Edytuj</button>'+
+      '</div></article>';
+  }).join("");
+}
+$("#search").addEventListener("input", renderList);
+$("#clearSearch").addEventListener("click", ()=>{ $("#search").value = ""; renderList(); });
+$("#list").addEventListener("click", async e=>{
+  const o = e.target.closest("[data-open]"), p = e.target.closest("[data-print]"), ed = e.target.closest("[data-edit]");
+  if(o) openDetail(o.dataset.open);
+  else if(p){ const r = await dbGet(p.dataset.print); if(r) printRecord(r); }
+  else if(ed) editRecord(ed.dataset.edit);
+});
+
+/* =====================================================================
+   12. DETAIL VIEW
+   ===================================================================== */
+async function openDetail(id){
+  const r = await dbGet(id);
+  if(!r){ toast("Nie znaleziono rekordu"); return; }
+  currentDetailId = id;
+  $("#dTitle").textContent = r.modelCode || "Model nie wpisany";
+  $("#dSub").textContent = "S/N "+(r.serialNumber||"—")+" · zapisano "+new Date(r.createdAt).toLocaleString("pl-PL");
+  $("#dKv").innerHTML = FIELDS.concat(EXTRA).filter(f=> LABELS[f]).map(f=> "<div>"+esc(LABELS[f])+"</div><div>"+esc(r[f]||"—")+"</div>").join("");
+  const groups = [["Zdjęcia urządzenia i usterki", r.photosDefect||[]],["HASS / tabliczka znamionowa", r.hassImages||[]]];
+  $("#dPhotos").innerHTML = groups.filter(g=> g[1].length).map(g=>
+    '<div class="section-h">'+g[0]+'</div><div class="thumbs">'+
+    g[1].map((s,i)=> String(s).indexOf("data:video") === 0
+      ? '<div class="thumb"><video src="'+s+'" controls muted playsinline></video></div>'
+      : '<div class="thumb"><img src="'+s+'" alt="'+esc(g[0])+' '+(i+1)+'"></div>').join("")+'</div>'
+  ).join("") || '<p class="hint" style="margin-top:14px">Brak zdjęć w tej inspekcji.</p>';
+  showView("detail");
+}
+$("#backBtn").addEventListener("click", ()=>{ showView("dash"); refreshDash(); });
+$("#printBtn").addEventListener("click", async ()=>{ const r = await dbGet(currentDetailId); if(r) printRecord(r); });
+$("#editBtn").addEventListener("click", ()=> editRecord(currentDetailId));
+$("#delBtn").addEventListener("click", async ()=>{
+  if(!confirm("Usunąć tę inspekcję wraz ze zdjęciami?")) return;
+  await dbDel(currentDetailId);
+  toast("Usunięto inspekcję");
+  showView("dash"); refreshDash();
+});
+async function editRecord(id){
+  const r = await dbGet(id);
+  if(!r) return;
+  draft = blankDraft();
+  FIELDS.concat(EXTRA).forEach(f=> draft[f] = r[f] || "");
+  draft.photosDefect = (r.photosDefect||[]).slice();
+  draft.hassImages = (r.hassImages||[]).slice();
+  draft.errors = r.errors && r.errors.length === 5 ? r.errors.slice()
+    : (r.errorCodeHistory||"").split("\n").map(l=> l.replace(/^\d+\.\s*/,"")).map(v=> v === "---" ? "" : v).concat(["","","","",""]).slice(0,5);
+  draft.parts = r.parts && r.parts.length === 4 ? r.parts.slice()
+    : (r.collectedParts && r.collectedParts !== "-" ? r.collectedParts.split("\n") : []).concat(["","","",""]).slice(0,4);
+  draft._activityAuto = r._activityAuto === true;
+  editingId = id;
+  showView("form"); writeForm(); goStep(1);
+  toast("Edycja zapisanej inspekcji");
+}
+
+/* =====================================================================
+   13. PRINT / PDF
+   ===================================================================== */
+function printRecord(r){
+  const errs = (r.errorCodeHistory || buildErrorHistory(r.errors)).split("\n");
+  const kv = (k,v)=> '<tr><td class="k">'+esc(k)+'</td><td>'+esc(v||"—")+'</td></tr>';
+  const media = [].concat(r.photosDefect||[], r.hassImages||[]).filter(s=> String(s).indexOf("data:video") !== 0).slice(0,8);
+  $("#printarea").innerHTML =
+  '<div class="p-head"><h1>Wizyta serwisowa (Ride Along) i inspekcja WH — SESA QA</h1>'+
+  '<div class="sub">Model: <b>'+esc(r.modelCode||"—")+'</b><br>S/N: '+esc(r.serialNumber||"—")+
+  '<br>Nr '+esc(r.no||"—")+' · '+new Date(r.createdAt).toLocaleDateString("pl-PL")+'</div></div>'+
+  '<div class="p-grid">'+
+    '<div class="p-sec"><h2>Opis klienta</h2><table class="p-tab">'+
+      kv("Sales", r.sales)+kv("Rodzaj zgłoszenia", r.type)+
+      (r.returnType ? kv("Rodzaj zwrotu", r.returnType) : "")+
+      kv("Data wizyty", r.visitDate)+kv("Fabryka", r.plant)+
+      kv("Miesiąc produkcji", r.productionMonth)+kv("Rok produkcji", r.productionYear)+
+      kv("Data zakupu", r.purchaseDate)+kv("Data zgłoszenia", r.requestDate)+
+      kv("PJT", r.series)+kv("Typ wyświetlacza", r.displayType)+kv("Typ dozownika", r.dispenserType)+
+      kv("Lokalizacja urządzenia", r.unitLocation)+kv("Objaw zgłoszony przez klienta", r.customerSymptom)+
+    '</table></div>'+
+    '<div class="p-sec"><h2>Inspekcja SEPM</h2><table class="p-tab">'+
+      kv("Rzeczywista usterka", r.realDefect)+kv("Rodzaj", r.inspType)+kv("Kategoria", r.category)+
+      kv("Rodzaj czynności", r.activityType)+kv("Czynności", r.activity)+
+      kv("HASS", r.hass)+kv("Licznik cykli", r.cyclesCounter)+
+      kv("Zebrane części", r.collectedParts)+kv("Uwagi", r.remark)+
+    '</table></div>'+
+  '</div>'+
+  '<div class="p-sec"><h2>Historia kodów błędów</h2><table class="p-err"><tr>'+
+    errs.map(l=> '<th>'+esc(l.split(".")[0])+'</th>').join("")+'</tr><tr>'+
+    errs.map(l=> '<td>'+esc(l.replace(/^\d+\.\s*/,""))+'</td>').join("")+'</tr></table></div>'+
+  (media.length ? '<div class="p-sec"><h2>Zdjęcia główne</h2><div class="p-photos">'+
+    media.map(s=> '<img src="'+s+'" alt="">').join("")+'</div></div>' : '')+
+  '<div class="p-foot"><span>THOR · MQC W/M Samsung Electronics Poland Manufacturing</span><span>Wygenerowano: '+nowStamp()+'</span></div>';
+  setTimeout(()=> window.print(), 120);
+}
+
+/* =====================================================================
+   14. ZIP (store) + XLSX
+   ===================================================================== */
+const CRC_TABLE = (function(){
+  const t = new Uint32Array(256);
+  for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c = (c&1) ? (0xEDB88320 ^ (c>>>1)) : (c>>>1); t[n]=c>>>0; }
+  return t;
+})();
+function crc32(buf){
+  let c = 0xFFFFFFFF;
+  for(let i=0;i<buf.length;i++) c = CRC_TABLE[(c ^ buf[i]) & 0xFF] ^ (c>>>8);
+  return (c ^ 0xFFFFFFFF)>>>0;
+}
+function zipFiles(files){
+  const enc = new TextEncoder();
+  const parts = [], central = [];
+  let offset = 0;
+  files.forEach(f=>{
+    const nameBytes = enc.encode(f.name);
+    const data = (f.data instanceof Uint8Array) ? f.data : enc.encode(f.data);
+    const crc = crc32(data);
+
+    const lh = new Uint8Array(30 + nameBytes.length);
+    const lv = new DataView(lh.buffer);
+    lv.setUint32(0, 0x04034b50, true);
+    lv.setUint16(4, 20, true); lv.setUint16(6, 0x0800, true);
+    lv.setUint16(8, 0, true); lv.setUint16(12, 0x2100, true);
+    lv.setUint32(14, crc, true);
+    lv.setUint32(18, data.length, true); lv.setUint32(22, data.length, true);
+    lv.setUint16(26, nameBytes.length, true);
+    lh.set(nameBytes, 30);
+    parts.push(lh, data);
+
+    const ch = new Uint8Array(46 + nameBytes.length);
+    const cv = new DataView(ch.buffer);
+    cv.setUint32(0, 0x02014b50, true);
+    cv.setUint16(4, 20, true); cv.setUint16(6, 20, true);
+    cv.setUint16(8, 0x0800, true); cv.setUint16(14, 0x2100, true);
+    cv.setUint32(16, crc, true);
+    cv.setUint32(20, data.length, true); cv.setUint32(24, data.length, true);
+    cv.setUint16(28, nameBytes.length, true);
+    cv.setUint32(42, offset, true);
+    ch.set(nameBytes, 46);
+    central.push(ch);
+    offset += lh.length + data.length;
+  });
+  let cdSize = 0; central.forEach(c=> cdSize += c.length);
+  const eocd = new Uint8Array(22);
+  const ev = new DataView(eocd.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(8, files.length, true); ev.setUint16(10, files.length, true);
+  ev.setUint32(12, cdSize, true); ev.setUint32(16, offset, true);
+  const all = parts.concat(central, [eocd]);
+  let total = 0; all.forEach(a=> total += a.length);
+  const out = new Uint8Array(total);
+  let p = 0; all.forEach(a=>{ out.set(a, p); p += a.length; });
+  return out;
+}
+
+function xesc(s){
+  return String(s==null?"":s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")
+    .replace(/\r\n/g,"&#10;").replace(/\n/g,"&#10;").replace(/\r/g,"&#10;")
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g,"");
+}
+function colName(i){
+  let s = "", n = i + 1;
+  while(n > 0){ const r = (n-1)%26; s = String.fromCharCode(65+r)+s; n = Math.floor((n-1)/26); }
+  return s;
+}
+function b64ToBytes(b64){
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+function dataURLBytes(u){
+  const i = String(u).indexOf(",");
+  return b64ToBytes(String(u).slice(i+1));
+}
+function imgSize(dataUrl){
+  return new Promise(res=>{
+    const im = new Image();
+    im.onload = ()=> res({w:im.naturalWidth, h:im.naturalHeight});
+    im.onerror = ()=> res({w:4, h:3});
+    im.src = dataUrl;
+  });
+}
+function dateSerial(iso){
+  if(!iso) return null;
+  const d = new Date(iso+"T00:00:00");
+  if(isNaN(d)) return null;
+  return Math.round((d - new Date(Date.UTC(1899,11,30))) / 86400000);
+}
+
+/* styles: 0 default, 1 title, 2 CD group, 3 SEPM group, 4 header,
+   5 text, 6 centred, 7 date, 8 section separator */
+function cTxt(ref,s,v){ return (v===""||v==null) ? '<c r="'+ref+'" s="'+s+'"/>' :
+  '<c r="'+ref+'" s="'+s+'" t="inlineStr"><is><t xml:space="preserve">'+xesc(v)+'</t></is></c>'; }
+function cNum(ref,s,v){ return '<c r="'+ref+'" s="'+s+'"><v>'+v+'</v></c>'; }
+function cFml(ref,s,f,v){ return '<c r="'+ref+'" s="'+s+'"><f>'+xesc(f)+'</f><v>'+xesc(v)+'</v></c>'; }
+
+const PX = 9525;                  /* EMU per pixel */
+const PIC_COL = 21;               /* column V (0-based) */
+const PIC_ROW_H = 177;            /* pt, as in the template */
+const PIC_BOX_W = 92, PIC_BOX_H = 224;  /* px per photo */
+
+async function buildXLSX(records, withImages){
+  /* split: SEPM first, then the rest behind a separator row */
+  const sepm = records.filter(r=> (r.plant||"").toUpperCase() === "SEPM");
+  const other = records.filter(r=> (r.plant||"").toUpperCase() !== "SEPM");
+
+  const entries = [];
+  sepm.forEach(r=> entries.push({t:"d", r:r}));
+  if(other.length){
+    entries.push({t:"sep", label:"Produkty spoza SEPM"});
+    other.forEach(r=> entries.push({t:"d", r:r}));
+  }
+
+  const N = 27, first = 1, lastCol = colName(first + N - 1);   /* B..AB */
+  const lastRow = entries.length + 3;
+
+  /* columns: A narrow, the rest as in the template */
+  const widths = [3.5,7.5,10.8,21.1,15.7,11.9,24.5,23.8,16.4,16,12.3,17.9,20.4,22.6,21.4,32.6,43.1,14.8,23.6,17.4,36.8,54.2,25,20.4,24.1,31.7,28.7,54.3];
+  const cols = '<cols>'+widths.map((w,i)=> '<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+w+'" customWidth="1"/>').join("")+'</cols>';
+
+  const r1 = '<row r="1" ht="20" customHeight="1">'+cTxt("B1",1,"Dane na dzień: "+reportDate())+'</row>';
+  const r2 = '<row r="2" ht="19" customHeight="1">'+
+    Array.from({length:N},(_,i)=>{
+      const ref = colName(first+i)+"2";
+      if(i === 0) return cTxt(ref,2,"Opis klienta");
+      if(i === 15) return cTxt(ref,3,"Inspekcja SEPM");
+      return '<c r="'+ref+'" s="'+(i<15?2:3)+'"/>';
+    }).join("")+'</row>';
+  const r3 = '<row r="3" ht="30" customHeight="1">'+
+    XL_HEADERS.map((h,i)=> cTxt(colName(first+i)+"3", 4, h)).join("")+'</row>';
+
+  const drawings = [];
+  const media = [];
+  let picId = 1;
+
+  const bodyRows = [];
+  for(let idx=0; idx<entries.length; idx++){
+    const rowNum = idx + 4;
+    const e = entries[idx];
+
+    if(e.t === "sep"){
+      bodyRows.push('<row r="'+rowNum+'" ht="20" customHeight="1">'+
+        Array.from({length:N},(_,i)=> i === 0 ? cTxt(colName(first)+rowNum, 8, e.label)
+          : '<c r="'+colName(first+i)+rowNum+'" s="8"/>').join("")+'</row>');
+      continue;
+    }
+
+    const r = e.r;
+    /* #2: do Excela trafia do 8 zdjęć (nagrania wideo są pomijane) */
+    const photos = [].concat(r.photosDefect||[], r.hassImages||[]).filter(s=> String(s).indexOf("data:video") !== 0).slice(0,8);
+    const hasPics = withImages && photos.length > 0;
+
+    const cells = [];
+    const put = (i, xml)=> cells.push(xml);
+    const ref = i=> colName(first+i)+rowNum;
+
+    /* B No */
+    const noNum = parseInt(r.no,10);
+    put(0, isNaN(noNum) ? cTxt(ref(0),6,r.no||"") : cNum(ref(0),6,noNum));
+    /* C Sales, D Type */
+    put(1, cTxt(ref(1),6,r.sales||""));
+    put(2, cTxt(ref(2),5,r.type||""));
+    /* E Visit date */
+    const vs = dateSerial(r.visitDate);
+    put(3, vs ? cNum(ref(3),7,vs) : cTxt(ref(3),6,r.visitDate||""));
+    /* F Plant */
+    put(4, cTxt(ref(4),6,r.plant||""));
+    /* G Production month (number 9.2025 as in the template) */
+    const pm = parseFloat(String(r.productionMonth||"").replace(",","."));
+    put(5, isNaN(pm) ? cTxt(ref(5),6,r.productionMonth||"") : cNum(ref(5),6,pm));
+    /* H Production year — formula as in the template */
+    put(6, r.productionMonth
+      ? cFml(ref(6),6,'RIGHT(G'+rowNum+',4)', r.productionYear||"")
+      : cTxt(ref(6),6,r.productionYear||""));
+    /* I Purchase, J Request */
+    const ps = dateSerial(r.purchaseDate), rs = dateSerial(r.requestDate);
+    put(7, ps ? cNum(ref(7),7,ps) : cTxt(ref(7),6,r.purchaseDate||""));
+    put(8, rs ? cNum(ref(8),7,rs) : cTxt(ref(8),6,r.requestDate||""));
+    /* K PJT (seria) */
+    put(9, cTxt(ref(9),6,r.series||r.pjt||""));
+    put(10, cTxt(ref(10),6,r.displayType||""));
+    put(11, cTxt(ref(11),6,r.dispenserType||""));
+    put(12, cTxt(ref(12),6,r.modelCode||""));
+    put(13, cTxt(ref(13),6,r.serialNumber||""));
+    put(14, cTxt(ref(14),5,r.customerSymptom||""));
+    put(15, cTxt(ref(15),5,r.realDefect||""));
+    put(16, cTxt(ref(16),6,r.inspType||""));
+    put(17, cTxt(ref(17),6,r.category||""));
+    put(18, cTxt(ref(18),6,r.activityType||""));
+    put(19, cTxt(ref(19),5,r.activity||""));
+    /* V Main Pictures — photos or a note */
+    put(20, hasPics ? '<c r="'+ref(20)+'" s="5"/>' : cTxt(ref(20),5,r.mainPictures||""));
+    put(21, cTxt(ref(21),5,r.hass||""));
+    const cc = parseInt(r.cyclesCounter,10);
+    put(22, (!isNaN(cc) && String(cc) === String(r.cyclesCounter).trim()) ? cNum(ref(22),6,cc) : cTxt(ref(22),6,r.cyclesCounter||""));
+    put(23, cTxt(ref(23),5,r.errorCodeHistory||""));
+    put(24, cTxt(ref(24),5,r.unitLocation||""));
+    put(25, cTxt(ref(25),5,r.collectedParts||""));
+    put(26, cTxt(ref(26),5,r.remark||""));
+
+    bodyRows.push('<row r="'+rowNum+'"'+(hasPics ? ' ht="'+PIC_ROW_H+'" customHeight="1"' : '')+'>'+cells.join("")+'</row>');
+
+    if(hasPics){
+      for(let k=0;k<photos.length;k++){
+        const dim = await imgSize(photos[k]);
+        const scale = Math.min(PIC_BOX_W/dim.w, PIC_BOX_H/dim.h);
+        const w = Math.max(20, Math.round(dim.w*scale));
+        const h = Math.max(20, Math.round(dim.h*scale));
+        const xOff = 6 + k*(PIC_BOX_W+6);
+        const yOff = 6;
+        const rid = "rId"+picId;
+        media.push({name:"xl/media/image"+picId+".jpeg", data:dataURLBytes(photos[k]), rid:rid});
+        drawings.push(
+          '<xdr:oneCellAnchor>'+
+          '<xdr:from><xdr:col>'+PIC_COL+'</xdr:col><xdr:colOff>'+(xOff*PX)+'</xdr:colOff>'+
+          '<xdr:row>'+(rowNum-1)+'</xdr:row><xdr:rowOff>'+(yOff*PX)+'</xdr:rowOff></xdr:from>'+
+          '<xdr:ext cx="'+(w*PX)+'" cy="'+(h*PX)+'"/>'+
+          '<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="'+(picId+1)+'" name="Picture '+picId+'"/>'+
+          '<xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>'+
+          '<xdr:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="'+rid+'"/>'+
+          '<a:stretch><a:fillRect/></a:stretch></xdr:blipFill>'+
+          '<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+(w*PX)+'" cy="'+(h*PX)+'"/></a:xfrm>'+
+          '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic>'+
+          '<xdr:clientData/></xdr:oneCellAnchor>'
+        );
+        picId++;
+      }
+    }
+  }
+
+  const hasDrawing = drawings.length > 0;
+
+  const sheet =
+'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '+
+'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'+
+'<dimension ref="A1:'+lastCol+lastRow+'"/>'+
+'<sheetViews><sheetView tabSelected="1" showGridLines="0" workbookViewId="0">'+
+'<pane ySplit="3" topLeftCell="A4" activePane="bottomLeft" state="frozen"/>'+
+'<selection pane="bottomLeft" activeCell="B4" sqref="B4"/></sheetView></sheetViews>'+
+'<sheetFormatPr defaultRowHeight="15"/>'+cols+
+'<sheetData>'+r1+r2+r3+bodyRows.join("")+'</sheetData>'+
+'<autoFilter ref="B3:'+lastCol+lastRow+'"/>'+
+'<mergeCells count="3"><mergeCell ref="B1:'+lastCol+'1"/><mergeCell ref="B2:P2"/><mergeCell ref="Q2:'+lastCol+'2"/></mergeCells>'+
+'<pageMargins left="0.25" right="0.25" top="0.5" bottom="0.5" header="0.3" footer="0.3"/>'+
+'<pageSetup paperSize="8" orientation="landscape" fitToWidth="1" fitToHeight="0"/>'+
+(hasDrawing ? '<drawing r:id="rIdDr1"/>' : '')+
+'</worksheet>';
+
+  const styles =
+'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+'<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
+'<numFmts count="1"><numFmt numFmtId="164" formatCode="dd\\.mm\\.yyyy"/></numFmts>'+
+'<fonts count="4">'+
+'<font><sz val="11"/><name val="Century Gothic"/></font>'+
+'<font><b/><sz val="14"/><name val="Century Gothic"/></font>'+
+'<font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Century Gothic"/></font>'+
+'<font><b/><sz val="11"/><name val="Century Gothic"/></font>'+
+'</fonts>'+
+'<fills count="6">'+
+'<fill><patternFill patternType="none"/></fill>'+
+'<fill><patternFill patternType="gray125"/></fill>'+
+'<fill><patternFill patternType="solid"><fgColor rgb="FF1F3864"/><bgColor indexed="64"/></patternFill></fill>'+
+'<fill><patternFill patternType="solid"><fgColor rgb="FF375623"/><bgColor indexed="64"/></patternFill></fill>'+
+'<fill><patternFill patternType="solid"><fgColor rgb="FFD9D9D9"/><bgColor indexed="64"/></patternFill></fill>'+
+'<fill><patternFill patternType="solid"><fgColor rgb="FFFFE699"/><bgColor indexed="64"/></patternFill></fill>'+
+'</fills>'+
+'<borders count="2">'+
+'<border><left/><right/><top/><bottom/><diagonal/></border>'+
+'<border><left style="thin"><color rgb="FF808080"/></left><right style="thin"><color rgb="FF808080"/></right>'+
+'<top style="thin"><color rgb="FF808080"/></top><bottom style="thin"><color rgb="FF808080"/></bottom><diagonal/></border>'+
+'</borders>'+
+'<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'+
+'<cellXfs count="9">'+
+'<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'+
+'<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment vertical="center"/></xf>'+
+'<xf numFmtId="0" fontId="2" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'+
+'<xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'+
+'<xf numFmtId="0" fontId="3" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'+
+'<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>'+
+'<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'+
+'<xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'+
+'<xf numFmtId="0" fontId="3" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'+
+'</cellXfs>'+
+'<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'+
+'</styleSheet>';
+
+  const files = [
+    {name:"[Content_Types].xml", data:
+'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'+
+'<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'+
+'<Default Extension="xml" ContentType="application/xml"/>'+
+'<Default Extension="jpeg" ContentType="image/jpeg"/>'+
+'<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'+
+'<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'+
+'<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'+
+(hasDrawing ? '<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>' : '')+
+'</Types>'},
+    {name:"_rels/.rels", data:
+'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+'<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'+
+'</Relationships>'},
+    {name:"xl/workbook.xml", data:
+'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '+
+'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'+
+'<sheets><sheet name="Wizyta serwisowa (Ride Along)" sheetId="1" r:id="rId1"/></sheets></workbook>'},
+    {name:"xl/_rels/workbook.xml.rels", data:
+'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+'<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'+
+'<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'+
+'</Relationships>'},
+    {name:"xl/styles.xml", data: styles},
+    {name:"xl/worksheets/sheet1.xml", data: sheet}
+  ];
+
+  if(hasDrawing){
+    files.push({name:"xl/worksheets/_rels/sheet1.xml.rels", data:
+'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+'<Relationship Id="rIdDr1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/>'+
+'</Relationships>'});
+    files.push({name:"xl/drawings/drawing1.xml", data:
+'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+'<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" '+
+'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'+drawings.join("")+'</xdr:wsDr>'});
+    files.push({name:"xl/drawings/_rels/drawing1.xml.rels", data:
+'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+media.map(m=> '<Relationship Id="'+m.rid+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/'+m.name.split("/").pop()+'"/>').join("")+
+'</Relationships>'});
+    media.forEach(m=> files.push({name:m.name, data:m.data}));
+  }
+
+  return zipFiles(files);
+}
+
+/* #6: pytanie o nazwę pliku przy eksporcie */
+function askFilename(defaultName){
+  const typed = prompt("Nazwa pliku:", defaultName);
+  if(typed === null) return null;
+  const clean = String(typed).trim().replace(/[\\/:*?"<>|]/g, "_");
+  return clean || defaultName;
+}
+async function exportXLSX(withImages){
+  const rows = (await dbAll()).sort((a,b)=>{
+    const na = parseInt(a.no,10), nb = parseInt(b.no,10);
+    if(!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
+    return (a.createdAt||0) - (b.createdAt||0);
+  });
+  if(!rows.length){ toast("Baza danych jest pusta"); return; }
+  const fname = askFilename("SESA_Wizyta_Serwisowa_"+todayISO()+".xlsx");
+  if(!fname) return;
+  toast(withImages ? "Tworzenie Excela ze zdjęciami…" : "Tworzenie Excela…");
+  try{
+    const bytes = await buildXLSX(rows, withImages);
+    download(new Blob([bytes], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),
+      fname);
+    toast("Excel gotowy ("+rows.length+" wierszy)");
+  }catch(e){
+    alert("Nie udało się utworzyć pliku Excel: "+(e && e.message ? e.message : e));
+  }
+}
+$("#xlsxBtn").addEventListener("click", ()=> exportXLSX(true));
+$("#xlsxNoImg").addEventListener("click", ()=> exportXLSX(false));
+
+/* =====================================================================
+   15. CSV / JSON
+   ===================================================================== */
+function csvCell(v){ return '"'+String(v==null?"":v).replace(/"/g,'""')+'"'; }
+function buildCSV(rows, sep){
+  const line1 = csvCell("Dane na dzień: "+reportDate()) + sep.repeat(26);
+  const g = new Array(27).fill(""); g[0] = "Opis klienta"; g[15] = "Inspekcja SEPM";
+  const line2 = g.map(csvCell).join(sep);
+  const line3 = XL_HEADERS.map(csvCell).join(sep);
+  const body = rows.map(r=> FIELDS.map(f=> csvCell(r[f]==null?"":r[f])).join(sep));
+  return "\uFEFF"+[line1,line2,line3].concat(body).join("\r\n")+"\r\n";
+}
+async function exportCSV(sep, label){
+  const rows = (await dbAll()).sort((a,b)=> (a.createdAt||0)-(b.createdAt||0));
+  if(!rows.length){ toast("Baza danych jest pusta"); return; }
+  const fname = askFilename("SESA_Wizyta_Serwisowa_"+todayISO()+".csv");
+  if(!fname) return;
+  download(new Blob([buildCSV(rows, sep)], {type:"text/csv;charset=utf-8"}), fname);
+  toast("CSV ("+label+") pobrany");
+}
+$("#csvSemi").addEventListener("click", ()=> exportCSV(";","średnik"));
+$("#csvComma").addEventListener("click", ()=> exportCSV(",","przecinek"));
+
+$("#jsonBtn").addEventListener("click", async ()=>{
+  const rows = await dbAll();
+  if(!rows.length){ toast("Baza danych jest pusta"); return; }
+  const fname = askFilename("SESA_kopia_"+todayISO()+".json");
+  if(!fname) return;
+  download(new Blob([JSON.stringify({app:"SESA QA", version:2, exportedAt:new Date().toISOString(), records:rows})],
+    {type:"application/json"}), fname);
+  toast("Pobrano kopię zapasową JSON");
+});
+$("#importBtn").addEventListener("click", ()=> $("#importFile").click());
+
+/* =====================================================================
+   15b. UDOSTĘPNIANIE ZAPISANEJ INSPEKCJI (Excel / JSON / e-mail / WhatsApp)
+   ===================================================================== */
+const SHARE_MAIL = "m.mataj@samsung.com";
+const SHARE_PHONE_WA = "48797025481";
+const SHARE_PHONE_SMS = "+48797025481";
+let shareRecord = null;
+
+function shareName(ext){
+  const base = "SESA_Inspekcja_" + ((shareRecord && (shareRecord.serialNumber || shareRecord.id)) || todayISO());
+  return base.replace(/[\\/:*?"<>|]/g, "_") + "_" + todayISO() + ext;
+}
+function shareSummaryText(r){
+  return [
+    "Inspekcja SESA QA",
+    "Rodzaj zgłoszenia: " + (r.type || "—"),
+    "Model: " + (r.modelCode || "—"),
+    "S/N: " + (r.serialNumber || "—"),
+    "Fabryka: " + (r.plant || "—") + " · PJT: " + (r.pjt || "—"),
+    "Data wizyty: " + (r.visitDate || "—"),
+    "Wynik HASS: " + (r.hassResult || "—") + (r.hass ? " · Opis HASS: " + r.hass : ""),
+    "Lokalizacja: " + (r.unitLocation || "—")
+  ].join("\n");
+}
+async function shareBlob(blob, fname){
+  try{
+    const file = new File([blob], fname, {type: blob.type});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title: fname});
+      toast("Plik udostępniono");
+      return;
+    }
+  }catch(e){
+    if(e && e.name === "AbortError") return; /* użytkownik anulował arkusz udostępniania */
+    /* spadamy do pobrania pliku */
+  }
+  download(blob, fname);
+  toast("Brak systemowego udostępniania — plik pobrano, dołącz go ręcznie do e-maila/WhatsApp");
+}
+$("#shareXlsx").addEventListener("click", async ()=>{
+  if(!shareRecord) return;
+  toast("Tworzenie Excela ze zdjęciami…");
+  try{
+    const bytes = await buildXLSX([shareRecord], true);
+    await shareBlob(new Blob([bytes], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}), shareName(".xlsx"));
+  }catch(e){ alert("Nie udało się utworzyć pliku Excel: "+(e && e.message ? e.message : e)); }
+});
+$("#shareJsonBtn").addEventListener("click", async ()=>{
+  if(!shareRecord) return;
+  const blob = new Blob([JSON.stringify({app:"SESA QA", version:2, exportedAt:new Date().toISOString(), records:[shareRecord]}, null, 2)],
+    {type:"application/json"});
+  await shareBlob(blob, shareName(".json"));
+});
+function openShare(rec){
+  shareRecord = rec;
+  const txt = shareSummaryText(rec);
+  const subj = "Inspekcja S/N " + (rec.serialNumber || rec.id);
+  $("#shareInfo").textContent = "S/N " + (rec.serialNumber || "—") + " · " + (rec.modelCode || "—") + " · zapisano " + new Date().toLocaleString("pl-PL");
+  $("#shareMail").href = "mailto:" + SHARE_MAIL + "?subject=" + encodeURIComponent(subj) + "&body=" + encodeURIComponent(txt);
+  $("#shareWa").href = "https://wa.me/" + SHARE_PHONE_WA + "?text=" + encodeURIComponent(txt);
+  $("#shareSms").href = "sms:" + SHARE_PHONE_SMS + "?body=" + encodeURIComponent(txt);
+  $("#shareModal").classList.add("on");
+}
+function closeShare(){ $("#shareModal").classList.remove("on"); shareRecord = null; }
+$("#shareClose").addEventListener("click", closeShare);
+
+$("#importFile").addEventListener("change", e=>{
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  if(!f) return;
+  const rd = new FileReader();
+  rd.onload = async ()=>{
+    try{
+      const data = JSON.parse(rd.result);
+      const recs = Array.isArray(data) ? data : (data.records || []);
+      if(!recs.length){ toast("Plik nie zawiera inspekcji"); return; }
+      if(!confirm("Zaimportować "+recs.length+" inspekcji? Rekordy o tym samym ID zostaną nadpisane.")) return;
+      let n = 0;
+      for(const r of recs){
+        if(!r || typeof r !== "object") continue;
+        if(!r.id) r.id = "INS-"+Date.now().toString(36).toUpperCase()+"-"+Math.floor(Math.random()*900+100);
+        if(!r.createdAt) r.createdAt = Date.now();
+        await dbPut(r); n++;
+      }
+      toast("Zaimportowano "+n+" inspekcji");
+      await refreshDash(); updateStorageInfo();
+    }catch(err){ alert("Nieprawidłowy plik JSON: "+(err && err.message ? err.message : err)); }
+  };
+  rd.readAsText(f);
+});
+$("#wipeBtn").addEventListener("click", async ()=>{
+  if(!confirm("Usunąć WSZYSTKIE inspekcje i zdjęcia z tego telefonu?")) return;
+  if(!confirm("Czy na pewno? Najpierw zrób kopię zapasową JSON.")) return;
+  await dbClear(); clearDraft();
+  toast("Baza danych wyczyszczona");
+  await refreshDash(); updateStorageInfo();
+});
+
+async function updateStorageInfo(){
+  const rows = await dbAll();
+  let bytes = 0;
+  rows.forEach(r=> [].concat(r.photosDefect||[], r.hassImages||[]).forEach(s=> bytes += s.length*0.75));
+  let quota = "";
+  if(navigator.storage && navigator.storage.estimate){
+    try{ const est = await navigator.storage.estimate();
+      if(est.quota) quota = " · limit przeglądarki ok. "+(est.quota/1073741824).toFixed(1)+" GB";
+    }catch(_){}
+  }
+  $("#storageInfo").textContent = rows.length+" inspekcji, zdjęcia/wideo ok. "+(bytes/1048576).toFixed(1)+" MB"+quota;
+
+  const env = envReport();
+  const mark = b=> b ? "✔" : "✖";
+  $("#envInfo").textContent =
+    "Adres: "+(env.isFile ? "file:// (plik lokalny)" : env.origin)+
+    " · Bezpieczny kontekst: "+mark(env.secure)+
+    " · Aparat: "+mark(env.hasGUM && env.secure)+
+    " · Czytnik QR/kodów: "+mark(env.hasBD)+
+    (env.secure && env.hasGUM && env.hasBD ? " — skaner gotowy." : " — skaner na żywo niedostępny, użyj zdjęcia tabliczki lub wpisu ręcznego.");
+}
+
+/* =====================================================================
+   16. THEME AND STARTUP
+   ===================================================================== */
+function setTheme(t){
+  document.documentElement.setAttribute("data-theme", t);
+  localStorage.setItem("sesa_theme", t);
+  const m = document.querySelector('meta[name="theme-color"]');
+  if(m) m.setAttribute("content", t === "dark" ? "#0e1620" : "#ffffff");
+}
+$("#themeBtn").addEventListener("click", ()=>
+  setTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark"));
+(function(){
+  const s = localStorage.getItem("sesa_theme");
+  setTheme(s || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+})();
+
+window.addEventListener("beforeunload", ()=>{
+  if($("#viewForm").hidden) return;
+  readForm(); saveDraft(true);
+});
+
+(async function init(){
+  try{ await openDB(); }
+  catch(e){ alert("Nie udało się otworzyć bazy IndexedDB. Przeglądanie prywatne może blokować pamięć."); }
+  showView("dash");
+  await refreshDash();
+  await updateStorageInfo();
+  const saved = loadDraftRaw();
+  if(saved && FIELDS.some(f=> saved[f] && f !== "visitDate")){
+    $("#subline").textContent = "Czeka niezapisany szkic — dotknij „Nowa”";
+  }
+})();
+
+/* #3: dogranie własnych projektów i serii wszystkich modeli (JSON) */
+$("#pjtImportBtn").addEventListener("click", ()=> $("#pjtImportFile").click());
+$("#pjtImportFile").addEventListener("change", e=>{
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  if(!f) return;
+  const rd = new FileReader();
+  rd.onload = ()=>{
+    try{
+      const data = JSON.parse(rd.result);
+      const letters = data.letters || data.pjtByLetter || null;       /* {"X":"X-PJT", …} */
+      const series  = data.series  || data.seriesByPJT || null;      /* {"X-PJT":["3000X",…], …} */
+      const dispenser = data.dispenser || data.dispenserRules || null; /* {"X-PJT":{pos:7,map:{…}} lub {always:"Manual"}} */
+      if(!letters && !series && !dispenser){
+        alert("Nieprawidłowy plik projektów. Oczekiwany format:\n"+
+          '{ "letters": {"X": "X-PJT"}, "series": {"X-PJT": ["3000X","4000X"]}, "dispenser": {"X-PJT": {"pos": 7, "map": {"8": "Auto"}}} }');
+        return;
+      }
+      if(letters) USER_PJT_RULES.letters = Object.assign(USER_PJT_RULES.letters, letters);
+      if(series)  USER_PJT_RULES.series  = Object.assign(USER_PJT_RULES.series, series);
+      if(dispenser) USER_PJT_RULES.dispenser = Object.assign(USER_PJT_RULES.dispenser, dispenser);
+      localStorage.setItem(PJT_RULES_KEY, JSON.stringify(USER_PJT_RULES));
+      toast("Dodano projekty — reguły aktywne");
+    }catch(err){ alert("Nieprawidłowy plik JSON: "+(err && err.message ? err.message : err)); }
+  };
+  rd.readAsText(f);
+});
+</script>
+<script id="thor-native-patch">
+/* THOR_NATIVE_PATCH v1
+ * Mostek Capacitor (Android) dla: download(), shareBlob(), window.print().
+ * Wklej ten blok w <script> tuż przed </body> pliku "THOR (Web).html"
+ * (workflow GitHub Actions robi to automatycznie, jeśli znacznika brak).
+ *
+ * Działa przez nadpisanie globalnych funkcji z głównego skryptu aplikacji:
+ * wszystkie wywołania download(...), shareBlob(...) i window.print()
+ * trafiają do wersji poniżej. W zwykłej przeglądarce wywoływane są
+ * oryginalne funkcje — zachowanie PWA pozostaje bez zmian.
+ */
+(function () {
+  "use strict";
+
+  var Cap = window.Capacitor;
+  var isNative = !!(Cap && typeof Cap.isNativePlatform === "function" && Cap.isNativePlatform());
+
+  var origDownload = typeof window.download === "function" ? window.download : null;
+  var origShareBlob = typeof window.shareBlob === "function" ? window.shareBlob : null;
+  var origPrint = typeof window.print === "function" ? window.print.bind(window) : null;
+
+  if (!isNative) return; /* przeglądarka: nic nie zmieniamy */
+
+  var Plugins = Cap.Plugins || {};
+  var FS = Plugins.Filesystem;
+  var Share = Plugins.Share;
+  var ThorPrint = Plugins.ThorPrint;
+
+  var CACHE_DIR = "thor-share";
+  var DOCS_DIR = "THOR";
+  var CHUNK = 3 * 1024 * 1024; /* wielokrotność 3 B → poprawne łączenie fragmentów Base64 */
+  var busy = false;
+
+  function say(msg) {
+    try { if (typeof window.toast === "function") window.toast(msg); } catch (e) { /* brak toastu */ }
+  }
+
+  function errText(e) {
+    return (e && (e.message || e.errorMessage)) ? (e.message || e.errorMessage) : String(e);
+  }
+
+  function safeName(name) {
+    var n = String(name || "THOR_plik").trim().replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_");
+    return n || "THOR_plik";
+  }
+
+  function blobPartToBase64(part) {
+    return new Promise(function (resolve, reject) {
+      var rd = new FileReader();
+      rd.onload = function () {
+        var s = String(rd.result || "");
+        var i = s.indexOf(",");
+        resolve(i >= 0 ? s.slice(i + 1) : "");
+      };
+      rd.onerror = function () { reject(rd.error || new Error("Błąd odczytu danych pliku")); };
+      rd.readAsDataURL(part);
+    });
+  }
+
+  /* Zapis Blob → Directory.Cache fragmentami (bez jednego gigantycznego stringa Base64). */
+  async function writeBlobToCache(blob, name) {
+    var path = CACHE_DIR + "/" + name;
+    try { await FS.deleteFile({ path: path, directory: "CACHE" }); } catch (e) { /* plik nie istniał */ }
+
+    var uri = null;
+    if (!blob.size) {
+      var r0 = await FS.writeFile({ path: path, data: "", directory: "CACHE", recursive: true });
+      uri = r0 && r0.uri;
+    } else {
+      for (var off = 0; off < blob.size; off += CHUNK) {
+        var b64 = await blobPartToBase64(blob.slice(off, Math.min(off + CHUNK, blob.size)));
+        if (off === 0) {
+          var r = await FS.writeFile({ path: path, data: b64, directory: "CACHE", recursive: true });
+          uri = r && r.uri;
+        } else {
+          await FS.appendFile({ path: path, data: b64, directory: "CACHE" });
+        }
+      }
+    }
+    if (!uri) uri = (await FS.getUri({ path: path, directory: "CACHE" })).uri;
+    return { path: path, uri: uri };
+  }
+
+  /* Kopia trwała w publicznym folderze Dokumenty/THOR (best-effort). */
+  async function copyToDocuments(cachePath, name) {
+    try {
+      try { await FS.mkdir({ path: DOCS_DIR, directory: "DOCUMENTS", recursive: true }); } catch (e) { /* istnieje */ }
+      var target = DOCS_DIR + "/" + name;
+      try { await FS.deleteFile({ path: target, directory: "DOCUMENTS" }); } catch (e) { /* nie istniał */ }
+      await FS.copy({ from: cachePath, directory: "CACHE", to: target, toDirectory: "DOCUMENTS" });
+      return true;
+    } catch (e) {
+      console.warn("THOR: kopia do Dokumentów nieudana:", errText(e));
+      return false;
+    }
+  }
+
+  async function openShareSheet(uri, name) {
+    try {
+      await Share.share({ title: name, dialogTitle: "Wyślij lub zapisz: " + name, files: [uri] });
+      return "shared";
+    } catch (e) {
+      if (/cancel/i.test(errText(e))) return "canceled";
+      throw e;
+    }
+  }
+
+  async function nativeSaveAndShare(blob, name, keepCopy) {
+    if (busy) { say("Poczekaj — poprzedni plik jest jeszcze przygotowywany"); return; }
+    if (!FS || !Share) {
+      alert("Brak wtyczek Filesystem/Share w aplikacji. Zbuduj APK ponownie.");
+      return;
+    }
+    busy = true;
+    var fname = safeName(name);
+    try {
+      say("Przygotowywanie pliku " + fname + "…");
+      var w = await writeBlobToCache(blob, fname);
+      var copied = keepCopy ? await copyToDocuments(w.path, fname) : false;
+      var res = await openShareSheet(w.uri, fname);
+      if (copied) say("Kopia zapisana: Dokumenty/" + DOCS_DIR + "/" + fname);
+      else if (res === "shared") say("Plik udostępniono");
+    } catch (e) {
+      alert("Nie udało się zapisać/udostępnić pliku: " + errText(e));
+    } finally {
+      busy = false;
+    }
+  }
+
+  /* --- podmiana funkcji aplikacji --- */
+
+  window.download = function (blob, name) {
+    nativeSaveAndShare(blob, name, true);
+  };
+
+  window.shareBlob = async function (blob, fname) {
+    await nativeSaveAndShare(blob, fname, false);
+  };
+
+  window.print = function () {
+    if (!ThorPrint) {
+      if (origPrint) origPrint();
+      return;
+    }
+    var sub = document.querySelector("#printarea .sub");
+    var job = "THOR_Inspekcja" + (sub ? "_" + sub.textContent.replace(/\s+/g, " ").trim().slice(0, 60) : "");
+    ThorPrint.print({ jobName: safeName(job) }).catch(function (e) {
+      alert("Drukowanie/PDF niedostępne: " + errText(e));
+    });
+  };
+
+  /* --- dopasowania interfejsu w APK --- */
+
+  function nativeInit() {
+    /* WhatsApp: bez target=_blank WebView przekazuje adres do systemu (otwiera aplikację). */
+    var wa = document.getElementById("shareWa");
+    if (wa) wa.removeAttribute("target");
+
+    /* Niektóre menedżery plików oznaczają .json jako text/plain lub octet-stream. */
+    ["importFile", "pjtImportFile"].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.setAttribute("accept", "application/json,text/plain,application/octet-stream,.json");
+    });
+
+    /* Prośba o trwałe przechowywanie IndexedDB. */
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* brak API */ }
+
+    /* Sprzątanie plików tymczasowych z poprzednich sesji. */
+    if (FS) FS.rmdir({ path: CACHE_DIR, directory: "CACHE", recursive: true }).catch(function () {});
+
+    document.documentElement.classList.add("thor-native");
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", nativeInit);
+  else nativeInit();
+
+  /* Dostęp do oryginałów (diagnostyka). */
+  window.__thorOriginal = { download: origDownload, shareBlob: origShareBlob, print: origPrint };
+})();
+
+</script>
+</body>
+</html>

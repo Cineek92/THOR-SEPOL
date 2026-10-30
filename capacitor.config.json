@@ -1,0 +1,15 @@
+{
+  "appId": "com.samsung.sepm.thor",
+  "appName": "THOR Inspection",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "hostname": "localhost",
+    "allowNavigation": []
+  },
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": false,
+    "webContentsDebuggingEnabled": false
+  }
+}
